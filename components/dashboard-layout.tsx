@@ -1,0 +1,253 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import {
+  BarChart3,
+  Users,
+  Menu,
+  X,
+  Mail,
+  Bell,
+  FileText,
+  Home,
+  Building,
+  ChevronDown,
+  User,
+  CreditCard,
+  Settings,
+  LogOut,
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useUser } from "@/contexts/user-context"
+
+interface NavItem {
+  title: string
+  href: string
+  icon: React.ElementType
+}
+
+const navItems: NavItem[] = [
+  {
+    title: "Accueil",
+    href: "/accueil",
+    icon: Home,
+  },
+  {
+    title: "Contacts",
+    href: "/contacts",
+    icon: Users,
+  },
+  {
+    title: "Listes",
+    href: "/listes", // Changed from "/lists" to "/listes"
+    icon: FileText,
+  },
+  {
+    title: "Campagnes",
+    href: "/campaigns",
+    icon: Mail,
+  },
+  {
+    title: "Statistiques",
+    href: "/statistics",
+    icon: BarChart3,
+  },
+]
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user, signOut, isLoading } = useUser()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error)
+    }
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar for mobile */}
+      <div className={`fixed inset-0 z-40 lg:hidden ${sidebarOpen ? "block" : "hidden"}`}>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-[#F5F0FF]">
+          <div className="flex h-16 items-center justify-between border-b border-[#EBE0FF] px-4">
+            <div className="flex items-center">
+              <div className="h-full w-full flex justify-center items-center pt-3">
+                <img src="/Sendora.png" alt="Sendora Logo" className="h-auto w-48 object-contain" />
+              </div>
+            </div>
+            <button onClick={() => setSidebarOpen(false)}>
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          <nav className="flex-1 space-y-1 px-2 py-4">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center rounded-md px-3 py-2 text-sm ${
+                    isActive
+                      ? "font-bold text-gray-900"
+                      : "font-medium text-gray-600 hover:font-bold hover:text-[#7739D1]"
+                  }`}
+                >
+                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
+                  {item.title}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Sidebar for desktop */}
+      <div className="hidden lg:flex lg:flex-shrink-0">
+        <div className="flex w-64 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col border-r border-[#EBE0FF] bg-[#F5F0FF]">
+            <div className="flex h-16 flex-shrink-0 items-center border-b border-[#EBE0FF] px-4">
+              <div className="flex items-center">
+                <div className="h-full w-full flex justify-center items-center pt-3">
+                  <img src="/Sendora.png" alt="Sendora Logo" className="h-auto w-48 object-contain" />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col overflow-y-auto">
+              <nav className="flex-1 space-y-1 px-2 py-4">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center rounded-md px-3 py-2 text-sm ${
+                        isActive
+                          ? "font-bold text-gray-900"
+                          : "font-medium text-gray-600 hover:font-bold hover:text-[#7739D1]"
+                      }`}
+                    >
+                      <item.icon className={`mr-3 h-5 w-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
+                      {item.title}
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Top navbar */}
+        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
+          <div className="flex items-center">
+            <button
+              className="mr-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#9D5CFF] lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {/* Logo Made in France */}
+            <svg
+              className="made-in-france hidden md:block"
+              xmlns="http://www.w3.org/2000/svg"
+              width="160"
+              height="50"
+              viewBox="0 0 370 100"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              {/* Bleu */}
+              <rect y="30" width="80" height="20" fill="#1D3A86" />
+              {/* Blanc */}
+              <rect y="30" x="80" width="80" height="20" fill="#FFFFFF" />
+              {/* Rouge */}
+              <rect y="30" x="160" width="80" height="20" fill="#D83A28" />
+              {/* Texte en dessous */}
+              <text
+                x="125"
+                y="70"
+                fontFamily="Arial, sans-serif"
+                fontSize="18"
+                fill="#000"
+                textAnchor="middle"
+                letterSpacing="5"
+                fontWeight="bold"
+              >
+                MADE IN FRANCE
+              </text>
+            </svg>
+
+            <button className="rounded-full bg-white p-1 text-gray-400 hover:text-[#9D5CFF] focus:outline-none focus:ring-2 focus:ring-[#9D5CFF] focus:ring-offset-2">
+              <Bell className="h-6 w-6" />
+            </button>
+
+            {/* Profile dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="focus:outline-none">
+                <div className="flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 hover:font-bold hover:text-[#7739D1]">
+                  <Building className="h-5 w-5 text-gray-600" />
+                  <span className="font-medium uppercase text-gray-800">
+                    {isLoading ? "..." : user?.entreprise || "SENDORA"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1">
+                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
+                  <Link href="/account" className="flex w-full items-center">
+                    <User className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                    Mon profil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
+                  <Link href="/account" className="flex w-full items-center">
+                    <CreditCard className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                    Mon plan
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
+                  <Link href="/account" className="flex w-full items-center">
+                    <Settings className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                    Paramètres
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem
+                  className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]"
+                  onClick={handleSignOut}
+                >
+                  <div className="flex w-full items-center">
+                    <LogOut className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                    Déconnexion
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">{children}</main>
+      </div>
+    </div>
+  )
+}
