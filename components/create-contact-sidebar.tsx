@@ -29,7 +29,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   const [listes, setListes] = useState<Liste[]>([])
   const [isCreatingListe, setIsCreatingListe] = useState(false)
   const [newListeName, setNewListeName] = useState("")
-  const [selectedListeId, setSelectedListeId] = useState<string>("")
+  const [selectedListeId, setSelectedListeId] = useState<string>("none")
   const [formData, setFormData] = useState({
     prenom: "",
     nom: "",
@@ -98,14 +98,14 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   const handleSelectChange = (value: string) => {
     if (value === "create-new") {
       setIsCreatingListe(true)
-      setSelectedListeId("")
+      setSelectedListeId("none")
       setFormData((prev) => ({ ...prev, liste_id: "" }))
     } else if (value === "none") {
       setFormData((prev) => ({ ...prev, liste_id: "" }))
       setSelectedListeId("none")
     } else {
       setFormData((prev) => ({ ...prev, liste_id: value }))
-      setSelectedListeId(value)
+      setSelectedListeId(String(value))
     }
   }
 
@@ -239,7 +239,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         telephone: "",
         liste_id: "",
       })
-      setSelectedListeId("")
+      setSelectedListeId("none")
       setEmailError("")
 
       // Fermer le panneau et notifier le parent
@@ -257,13 +257,19 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   // Fonction pour obtenir le texte à afficher dans le select
   const getSelectedListeText = () => {
     if (!selectedListeId) return "Sélectionner une liste"
-    if (selectedListeId === "none") return "Aucune liste"
+    if (selectedListeId === "none") return "Sélectionner une liste"
 
     const selectedListe = listes.find((liste) => liste.id === selectedListeId)
     return selectedListe
       ? `${selectedListe.nom} (${selectedListe.nb_contacts || 0} contacts)`
       : "Sélectionner une liste"
   }
+
+  const selectedListeLabel = selectedListeId
+    ? (listes.find((liste) => liste.id === selectedListeId)
+        ? `${listes.find((liste) => liste.id === selectedListeId)!.nom} (${listes.find((liste) => liste.id === selectedListeId)!.nb_contacts || 0} contacts)`
+        : "")
+    : "";
 
   if (!isOpen) return null
 
@@ -376,12 +382,12 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
                 <div className="mt-1 border border-purple-300 rounded-lg overflow-hidden">
                   <Select value={selectedListeId} onValueChange={handleSelectChange}>
                     <SelectTrigger className="border-0 focus:ring-0 focus:ring-offset-0">
-                      <SelectValue>{getSelectedListeText()}</SelectValue>
+                      <SelectValue placeholder="Sélectionner une liste" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Aucune liste</SelectItem>
                       {listes.map((liste) => (
-                        <SelectItem key={liste.id} value={liste.id}>
+                        <SelectItem key={liste.id} value={String(liste.id)}>
                           {liste.nom} ({liste.nb_contacts || 0} contacts)
                         </SelectItem>
                       ))}

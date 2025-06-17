@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 // Liste des routes protégées (nécessitent une connexion)
-const protectedRoutes = ['/accueil', '/contacts', '/campaigns', '/statistics', '/account']
+const protectedRoutes = ['/accueil', '/contacts', '/campaigns', '/statistics', '/account', '/listes'] as const
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()

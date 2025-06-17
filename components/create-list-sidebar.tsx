@@ -1,57 +1,53 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@/lib/supabase"
-import { useRouter } from "next/navigation"
+import { useUser } from "@/contexts/user-context"
+import { toast } from "sonner"
+import { X } from "lucide-react"
 
 interface CreateListSidebarProps {
   isOpen: boolean
   onClose: () => void
-  onListCreated?: () => void
+  onListCreated: () => void
 }
 
 export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateListSidebarProps) {
-  const [name, setName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createBrowserClient()
+  const { user } = useUser()
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    nom: "",
+    description: "",
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!user) return
 
-    setIsLoading(true)
+    setLoading(true)
     try {
-      // Get current user from Supabase auth
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error("User not authenticated")
-
-      const { error } = await supabase.from("Listes").insert([
-        {
-          nom: name.trim(),
+      const { error } = await createBrowserClient().from("Listes").insert({
+        nom: formData.nom,
+        description: formData.description,
           user_id: user.id,
           nb_contacts: 0,
-        },
-      ])
+      })
 
       if (error) throw error
 
-      // Reset form
-      setName("")
+      toast.success("Liste créée avec succès")
+      onListCreated()
       onClose()
-      onListCreated?.()
-      router.refresh()
+      setFormData({ nom: "", description: "" })
     } catch (error) {
-      console.error("Error creating list:", error)
+      console.error("Erreur lors de la création de la liste:", error)
+      toast.error("Une erreur est survenue lors de la création de la liste")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -59,17 +55,19 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
 
   return (
     <div className="fixed inset-0 z-50 top-0 left-0 right-0 bottom-0">
-      {/* Overlay moins foncé */}
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Sidebar avec bordures très arrondies à gauche */}
       <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem]">
-        {/* Header - Avec fond complet pour éviter la transparence */}
-        <div className="bg-purple-400 py-6 text-center relative z-10">
+        <div className="bg-purple-400 py-6 text-center relative z-10 flex justify-center items-center">
           <h2 className="text-xl font-bold text-white">Créer une liste</h2>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="absolute right-4 text-white hover:bg-purple-500"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
 
-        {/* Form - Avec espacement augmenté */}
         <form
           id="list-form"
           onSubmit={handleSubmit}
@@ -77,20 +75,33 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
         >
           <div className="space-y-7">
             <div>
-              <Label htmlFor="name">Nom de la liste</Label>
+              <Label htmlFor="nom">Nom de la liste</Label>
               <Input
-                id="name"
-                name="name"
-                placeholder="Entrez un nom de liste"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="nom"
+                name="nom"
+                placeholder="Ex: Newsletter mensuelle"
+                value={formData.nom}
+                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Décrivez le but de cette liste..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
                 className="mt-1"
               />
             </div>
           </div>
         </form>
 
-        {/* Buttons - Plus centrés avec espacement légèrement augmenté */}
         <div className="absolute bottom-0 left-0 right-0 px-8 py-6 bg-white border-t flex justify-center gap-8">
           <Button type="button" variant="outline" onClick={onClose}>
             Retour
@@ -98,10 +109,10 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
           <Button
             type="submit"
             form="list-form"
-            disabled={isLoading || !name.trim()}
+            disabled={loading || !formData.nom.trim()}
             className="bg-black text-white hover:bg-black/90"
           >
-            {isLoading ? "Création en cours..." : "Valider"}
+            {loading ? "Création en cours..." : "Valider"}
           </Button>
         </div>
       </div>
