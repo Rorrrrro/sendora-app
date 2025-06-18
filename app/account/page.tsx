@@ -116,7 +116,7 @@ export default function AccountPage() {
                       <Button variant="outline" size="sm" type="button">
                         Changer l'avatar
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" type="button">
+                      <Button variant="ghost" size="sm" className="hover:opacity-80" style={{ color: '#d21c3c' }} type="button">
                         Supprimer l'avatar
                       </Button>
                     </div>

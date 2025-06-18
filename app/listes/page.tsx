@@ -161,7 +161,7 @@ export default function ListesPage() {
                     </thead>
                     <tbody>
                       {filteredListes.map((liste) => (
-                        <tr key={liste.id} className="border-b transition-colors hover:bg-muted/50">
+                        <tr key={liste.id} className="border-b transition-colors hover:bg-muted">
                           <td className="p-4 align-middle font-medium">{liste.nom || "-"}</td>
                           <td className="p-4 align-middle">
                             <div className="max-w-[200px] truncate" title={liste.description}>
@@ -189,7 +189,9 @@ export default function ListesPage() {
                                 <DropdownMenuItem>Modifier la liste</DropdownMenuItem>
                                 <DropdownMenuItem>Gérer les contacts</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600">Supprimer</DropdownMenuItem>
+                                <DropdownMenuItem className="text-white" style={{ backgroundColor: '#d21c3c', borderColor: '#d21c3c' }}>
+                                  Supprimer
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>

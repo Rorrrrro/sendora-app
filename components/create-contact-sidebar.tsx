@@ -366,7 +366,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
                     value={newListeName}
                     onChange={(e) => setNewListeName(e.target.value)}
                   />
-                  <Button type="button" onClick={handleCreateListe} size="sm">
+                  <Button type="button" onClick={handleCreateListe} size="sm" className="bg-[#6c43e0] text-white hover:bg-[#4f32a7] font-bold">
                     Créer
                   </Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => setIsCreatingListe(false)}>

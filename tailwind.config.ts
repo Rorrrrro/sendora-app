@@ -57,6 +57,12 @@ const config: Config = {
           800: "#6429BA",
           900: "#5118A3",
         },
+        'sidebar': '#3d247a',
+        'sidebar-hover': '#7739d1',
+        'sidebar-active': '#2d1863',
+        'sidebar-selected-bg': '#e6dbfa',
+        'sidebar-hover-bg': '#f1eafd',
+        'sidebar-selected-bg-light': '#f4f4fd',
       },
       borderRadius: {
         lg: "var(--radius)",

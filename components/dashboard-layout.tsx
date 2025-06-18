@@ -83,7 +83,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar for mobile */}
       <div className={`fixed inset-0 z-40 lg:hidden ${sidebarOpen ? "block" : "hidden"}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-[#F5F0FF]">
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-[#f4f4fd]">
           <div className="flex h-16 items-center justify-between border-b border-[#EBE0FF] px-4">
             <div className="flex items-center">
               <div className="h-full w-full flex justify-center items-center pt-3">
@@ -95,31 +95,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center rounded-md px-3 py-2 text-sm ${
-                    isActive
-                      ? "font-bold text-gray-900"
-                      : "font-medium text-gray-600 hover:font-bold hover:text-[#7739D1]"
-                  }`}
-                >
-                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
-                  {item.title}
-                </Link>
-              )
-            })}
+            <div className="flex flex-col space-y-3">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center px-4 py-3 text-base transition-colors rounded-2xl
+                      ${isActive
+                        ? "bg-sidebar-selected-bg text-sidebar-active font-bold text-black"
+                        : "text-sidebar hover:text-sidebar-active hover:bg-sidebar-hover-bg"}
+                    `}
+                  >
+                    <item.icon className={`mr-3 h-6 w-6 ${isActive ? "stroke-[2.5px]" : ""}`} />
+                    {item.title}
+                  </Link>
+                )
+              })}
+            </div>
           </nav>
         </div>
       </div>
 
       {/* Sidebar for desktop */}
-      <div className="hidden lg:flex lg:flex-shrink-0">
+      <div className="hidden lg:flex lg:flex-shrink-0 z-20 relative">
         <div className="flex w-64 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col border-r border-[#EBE0FF] bg-[#F5F0FF]">
+          <div className="flex min-h-0 flex-1 flex-col bg-[#f4f4fd]">
             <div className="flex h-16 flex-shrink-0 items-center border-b border-[#EBE0FF] px-4">
               <div className="flex items-center">
                 <div className="h-full w-full flex justify-center items-center pt-3">
@@ -129,23 +131,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto">
               <nav className="flex-1 space-y-1 px-2 py-4">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center rounded-md px-3 py-2 text-sm ${
-                        isActive
-                          ? "font-bold text-gray-900"
-                          : "font-medium text-gray-600 hover:font-bold hover:text-[#7739D1]"
-                      }`}
-                    >
-                      <item.icon className={`mr-3 h-5 w-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
-                      {item.title}
-                    </Link>
-                  )
-                })}
+                <div className="flex flex-col space-y-3">
+                  {navItems.map((item) => {
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center px-4 py-3 text-base transition-colors rounded-2xl
+                          ${isActive
+                            ? "bg-sidebar-selected-bg text-sidebar-active font-bold text-black"
+                            : "text-sidebar hover:text-sidebar-active hover:bg-sidebar-hover-bg"}
+                        `}
+                      >
+                        <item.icon className={`mr-3 h-6 w-6 ${isActive ? "stroke-[2.5px]" : ""}`} />
+                        {item.title}
+                      </Link>
+                    )
+                  })}
+                </div>
               </nav>
             </div>
           </div>
@@ -155,7 +159,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top navbar */}
-        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
+        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 z-10 lg:pl-64">
           <div className="flex items-center">
             <button
               className="mr-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#9D5CFF] lg:hidden"

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, MoreHorizontal, Upload } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Upload, Trash2, Users, Download, ChevronDown, ChevronUp } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,14 +11,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 import { AppLayout } from "@/components/dashboard-layout"
 import { useUser } from "@/contexts/user-context"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { createBrowserClient } from "@/lib/supabase"
 import Link from "next/link"
 import { CreateContactSidebar } from "@/components/create-contact-sidebar"
 import { MultiListFilter } from "@/components/MultiListFilter"
 import { TableSkeleton } from "@/components/TableSkeleton"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 
 interface Contact {
   id: string
@@ -36,11 +49,21 @@ function ContactsTable({
   showSpinner,
   searchTerm,
   formatDate,
+  selectedContacts,
+  onSelectionChange,
+  onBulkDelete,
+  onBulkAddToList,
+  onBulkRemoveFromList,
 }: {
   contacts: Contact[];
   showSpinner: boolean;
   searchTerm: string;
   formatDate: (dateString: string) => string;
+  selectedContacts: Set<string>;
+  onSelectionChange: (contactId: string, selected: boolean) => void;
+  onBulkDelete: () => void;
+  onBulkAddToList: () => void;
+  onBulkRemoveFromList: () => void;
 }) {
   const filteredContacts = contacts.filter(
     (contact: Contact) =>
@@ -48,6 +71,17 @@ function ContactsTable({
       contact.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const allFilteredSelected = filteredContacts.every(contact => selectedContacts.has(contact.id))
+  const someFilteredSelected = filteredContacts.some(contact => selectedContacts.has(contact.id))
+
+  const handleSelectAll = (checked: boolean) => {
+    filteredContacts.forEach(contact => {
+      onSelectionChange(contact.id, checked)
+    })
+  }
+
+  const selectedCount = selectedContacts.size
 
   return (
     <div className="relative">
@@ -62,48 +96,91 @@ function ContactsTable({
           </p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50 transition-colors">
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Prénom</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Nom</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date de création</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[50px]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredContacts.map((contact) => (
-                  <tr key={contact.id} className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-medium">{contact.prenom || "-"}</td>
-                    <td className="p-4 align-middle font-medium">{contact.nom || "-"}</td>
-                    <td className="p-4 align-middle">{contact.email || "-"}</td>
-                    <td className="p-4 align-middle">{formatDate(contact.created_at)}</td>
-                    <td className="p-4 align-middle">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Ouvrir le menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>Voir les détails</DropdownMenuItem>
-                          <DropdownMenuItem>Modifier le contact</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">Supprimer</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+        <>
+          {/* Barre d'actions en lot */}
+          {selectedCount > 0 && (
+            <div className="mb-4 p-3 bg-muted/50 rounded-md border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {selectedCount} contact{selectedCount > 1 ? "s" : ""} sélectionné{selectedCount > 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onBulkAddToList}
+                  className="h-8"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Ajouter à une liste
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onBulkRemoveFromList}
+                  className="h-8"
+                >
+                  Enlever de la liste
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onBulkDelete}
+                  className="h-8 text-white hover:opacity-90"
+                  style={{ backgroundColor: '#d21c3c', borderColor: '#d21c3c' }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-md border">
+            <div className="relative w-full overflow-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50 transition-colors">
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[60px]">
+                      <Checkbox
+                        checked={allFilteredSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Sélectionner tous les contacts"
+                      />
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Prénom</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Nom</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date de création</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredContacts.map((contact) => (
+                    <tr
+                      key={contact.id}
+                      className={`border-b transition-colors ${selectedContacts.has(contact.id) 
+                        ? 'bg-sidebar-selected-bg-light hover:bg-[#dddcf6] rounded-xl transition-colors' 
+                        : 'hover:bg-muted'}`}
+                    >
+                      <td className="p-4 align-middle">
+                        <Checkbox
+                          checked={selectedContacts.has(contact.id)}
+                          onCheckedChange={(checked) => onSelectionChange(contact.id, checked as boolean)}
+                          aria-label={`Sélectionner ${contact.prenom} ${contact.nom}`}
+                        />
+                      </td>
+                      <td className="p-4 align-middle font-medium">{contact.prenom || "-"}</td>
+                      <td className="p-4 align-middle font-medium">{contact.nom || "-"}</td>
+                      <td className="p-4 align-middle">{contact.email || "-"}</td>
+                      <td className="p-4 align-middle">{formatDate(contact.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
@@ -118,7 +195,16 @@ export default function ContactsPage() {
   const [listes, setListes] = useState<{ id: number; nom: string }[]>([])
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
   const [showSpinner, setShowSpinner] = useState(false)
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
   const spinnerTimeout = useRef<NodeJS.Timeout | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showRemoveFromListDialog, setShowRemoveFromListDialog] = useState(false)
+  const [removableLists, setRemovableLists] = useState<{ id: number; nom: string }[]>([])
+  const [selectedListsToRemove, setSelectedListsToRemove] = useState<number[]>([])
+  const [showAddToListDialog, setShowAddToListDialog] = useState(false)
+  const [selectedListsToAdd, setSelectedListsToAdd] = useState<number[]>([])
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (user) {
@@ -129,6 +215,145 @@ export default function ContactsPage() {
         .then(({ data }) => setListes(data || []))
     }
   }, [user])
+
+  useEffect(() => {
+    setSelectedContacts(new Set())
+  }, [contacts])
+
+  useEffect(() => {
+    if (showRemoveFromListDialog && selectedContacts.size > 0 && user) {
+      const supabase = createBrowserClient()
+      supabase
+        .from("Listes_Contacts")
+        .select("liste_id, Listes(nom)")
+        .in("contact_id", Array.from(selectedContacts))
+        .then(({ data }) => {
+          const uniqueLists: { id: number; nom: string }[] = []
+          const seen = new Set()
+          for (const row of data as any[] || []) {
+            const listes = row.Listes;
+            let nom = undefined;
+            if (Array.isArray(listes)) {
+              nom = listes[0]?.nom;
+            } else if (listes && typeof listes === 'object') {
+              nom = listes.nom;
+            }
+            if (row.liste_id && nom && !seen.has(row.liste_id)) {
+              uniqueLists.push({ id: row.liste_id, nom });
+              seen.add(row.liste_id);
+            }
+          }
+          setRemovableLists(uniqueLists)
+          setSelectedListsToRemove(uniqueLists.map(l => l.id))
+        })
+    } else if (!showRemoveFromListDialog) {
+      setRemovableLists([])
+      setSelectedListsToRemove([])
+    }
+  }, [showRemoveFromListDialog, selectedContacts, user])
+
+  const handleBulkDelete = async () => {
+    if (!user || selectedContacts.size === 0) return
+    setShowDeleteDialog(false)
+    setLoading(true)
+    const supabase = createBrowserClient()
+    try {
+      await supabase
+        .from("Listes_Contacts")
+        .delete()
+        .in("contact_id", Array.from(selectedContacts))
+      const { error } = await supabase
+        .from("Contacts")
+        .delete()
+        .in("id", Array.from(selectedContacts))
+        .eq("userID", user.id)
+      if (error) {
+        console.error("Erreur lors de la suppression:", error)
+        alert("Erreur lors de la suppression des contacts")
+      } else {
+        setSelectedContacts(new Set())
+        fetchContacts()
+      }
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error)
+      alert("Erreur lors de la suppression des contacts")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBulkAddToList = () => {
+    if (selectedContacts.size === 0) return
+    setShowAddToListDialog(true)
+  }
+
+  const handleToggleList = (id: number) => {
+    setSelectedListsToRemove(prev =>
+      prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]
+    )
+  }
+  const handleToggleAllLists = () => {
+    if (selectedListsToRemove.length === removableLists.length) {
+      setSelectedListsToRemove([])
+    } else {
+      setSelectedListsToRemove(removableLists.map(l => l.id))
+    }
+  }
+
+  const handleRemoveFromLists = async () => {
+    if (!user || selectedContacts.size === 0 || selectedListsToRemove.length === 0) return;
+    setShowRemoveFromListDialog(false);
+    setLoading(true);
+    const supabase = createBrowserClient();
+    try {
+      await Promise.all(
+        selectedListsToRemove.map(listeId =>
+          supabase
+            .from("Listes_Contacts")
+            .delete()
+            .eq("liste_id", listeId)
+            .in("contact_id", Array.from(selectedContacts))
+        )
+      );
+      fetchContacts();
+      setSelectedContacts(new Set());
+    } catch (error) {
+      alert("Erreur lors du retrait des contacts de la ou des listes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleListToAdd = (id: number) => {
+    setSelectedListsToAdd(prev =>
+      prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]
+    )
+  }
+  const handleAddToLists = async () => {
+    if (!user || selectedContacts.size === 0 || selectedListsToAdd.length === 0) {
+      setShowAddToListDialog(false)
+      setSelectedListsToAdd([])
+      return
+    }
+    const supabase = createBrowserClient();
+    try {
+      await Promise.all(
+        selectedListsToAdd.flatMap(listeId =>
+          Array.from(selectedContacts).map(contactId =>
+            supabase.from("Listes_Contacts").insert([
+              { liste_id: Number(listeId), contact_id: Number(contactId), user_id: user.id }
+            ])
+          )
+        )
+      );
+      setShowAddToListDialog(false)
+      setSelectedListsToAdd([])
+      setSelectedContacts(new Set())
+      fetchContacts()
+    } catch (error) {
+      alert("Erreur lors de l'ajout aux listes.")
+    }
+  }
 
   const fetchContacts = () => {
     if (!user) return
@@ -251,7 +476,9 @@ export default function ContactsPage() {
               Créer un contact
             </Button>
             <Link href="/import-contacts" passHref>
-              <Button>
+              <Button
+                className="bg-[#6c43e0] border-[#6c43e0] text-white font-semibold hover:bg-[#4f32a7] hover:border-[#4f32a7] transition"
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Importer des contacts
               </Button>
@@ -286,7 +513,7 @@ export default function ContactsPage() {
                     placeholder="Rechercher des contacts..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:border-[#6c43e0]"
                   />
                 </div>
               </div>
@@ -303,7 +530,177 @@ export default function ContactsPage() {
               showSpinner={showSpinner}
               searchTerm={searchTerm}
               formatDate={formatDate}
+              selectedContacts={selectedContacts}
+              onSelectionChange={(contactId, selected) => {
+                if (selected) {
+                  setSelectedContacts(prev => new Set(prev).add(contactId))
+                } else {
+                  setSelectedContacts(prev => {
+                    const newSet = new Set(prev)
+                    newSet.delete(contactId)
+                    return newSet
+                  })
+                }
+              }}
+              onBulkDelete={() => setShowDeleteDialog(true)}
+              onBulkAddToList={handleBulkAddToList}
+              onBulkRemoveFromList={() => setShowRemoveFromListDialog(true)}
             />
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent className="rounded-xl shadow-2xl px-8 py-8 max-w-xl">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <AlertDialogHeader className="mb-2">
+                    <AlertDialogTitle className="mb-4 text-2xl font-bold">
+                      Supprimer définitivement
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-[15px]">
+                      Vous êtes sur le point de supprimer {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""} sélectionné{selectedContacts.size > 1 ? "s" : ""}.
+                      <span className="block mt-3">La suppression est permanente et ne peut pas être annulée.</span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                </div>
+                <AlertDialogFooter className="mt-6">
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkDelete} style={{ backgroundColor: '#d21c3c', borderColor: '#d21c3c' }} className="text-white hover:opacity-90">
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={showRemoveFromListDialog} onOpenChange={setShowRemoveFromListDialog}>
+              <AlertDialogContent className="rounded-xl shadow-2xl px-8 py-8 max-w-xl">
+                <div className="flex flex-col items-center text-center gap-4 w-full">
+                  <AlertDialogHeader className="mb-2 w-full">
+                    <AlertDialogTitle className="mb-4 text-2xl font-bold">
+                      Retirer de liste(s)
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-[15px] mb-4">
+                      Sélectionnez les listes dont vous souhaitez retirer {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""}.
+                    </AlertDialogDescription>
+                    {removableLists.length === 0 ? (
+                      <div className="text-muted-foreground text-sm">Aucune liste à retirer pour ces contacts.</div>
+                    ) : (
+                      <div className="w-full flex flex-col items-start gap-2">
+                        <button
+                          type="button"
+                          className="mb-2 text-sm font-medium text-primary underline"
+                          onClick={handleToggleAllLists}
+                        >
+                          {selectedListsToRemove.length === removableLists.length ? "Tout désélectionner" : "Tout sélectionner"}
+                        </button>
+                        {removableLists.map((list: { id: number; nom: string }) => (
+                          <label key={list.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedListsToRemove.includes(list.id)}
+                              onChange={() => handleToggleList(list.id)}
+                              className="accent-primary"
+                            />
+                            <span>{list.nom}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </AlertDialogHeader>
+                </div>
+                <AlertDialogFooter className="mt-6">
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleRemoveFromLists}
+                    className="text-white transition bg-[#6c43e0] border-[#6c43e0] hover:bg-[#4f32a7] hover:border-[#4f32a7]"
+                    disabled={selectedListsToRemove.length === 0}
+                  >
+                    Retirer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={showAddToListDialog} onOpenChange={setShowAddToListDialog}>
+              <AlertDialogContent className="rounded-xl shadow-2xl px-8 py-8 max-w-xl">
+                <div className="flex flex-col items-center text-center gap-4 w-full">
+                  <AlertDialogHeader className="mb-2 w-full">
+                    <AlertDialogTitle className="mb-4 text-2xl font-bold">
+                      Ajouter à une liste(s)
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-[15px] mb-4">
+                      Sélectionnez les listes auxquelles vous souhaitez ajouter {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""}.
+                    </AlertDialogDescription>
+                    {listes.length === 0 ? (
+                      <div className="text-muted-foreground text-sm">Aucune liste disponible.</div>
+                    ) : (
+                      <div className="w-full flex flex-col items-start gap-2 relative">
+                        <button
+                          ref={triggerRef}
+                          type="button"
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm font-medium shadow-sm flex items-center justify-between focus:outline-none focus:border-[#6c43e0]"
+                          onClick={() => setPopoverOpen((o) => !o)}
+                          aria-haspopup="listbox"
+                          aria-expanded={popoverOpen}
+                        >
+                          <span>
+                            {selectedListsToAdd.length === 0
+                              ? "Sélectionner une ou plusieurs listes"
+                              : `${selectedListsToAdd.length} liste${selectedListsToAdd.length > 1 ? "s" : ""} sélectionnée${selectedListsToAdd.length > 1 ? "s" : ""}`}
+                          </span>
+                          {popoverOpen ? <ChevronUp className="ml-2 h-4 w-4 text-muted-foreground" /> : <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />}
+                        </button>
+                        {popoverOpen && (
+                          <>
+                            {/* Overlay pour fermer au clic extérieur */}
+                            <div
+                              className="fixed inset-0 z-30"
+                              onClick={() => setPopoverOpen(false)}
+                              aria-hidden="true"
+                            />
+                            <div
+                              className="absolute z-40 mt-10 w-full bg-white border rounded-lg shadow-lg p-0 max-h-60 overflow-auto left-0"
+                              style={{ minWidth: triggerRef.current ? triggerRef.current.offsetWidth : undefined }}
+                            >
+                              <div className="flex flex-col">
+                                {listes.map((list) => {
+                                  const isSelected = selectedListsToAdd.includes(list.id);
+                                  return (
+                                    <label
+                                      key={list.id}
+                                      className={`flex items-center gap-2 cursor-pointer transition-colors py-3 px-3
+                                        ${isSelected ? 'bg-[#f4f4fd] hover:bg-[#dddcf6]' : 'hover:bg-muted'}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => {
+                                          setSelectedListsToAdd((prev) =>
+                                            prev.includes(list.id)
+                                              ? prev.filter((id) => id !== list.id)
+                                              : [...prev, list.id]
+                                          );
+                                        }}
+                                        className="accent-primary w-4 h-4"
+                                      />
+                                      <span>{list.nom}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </AlertDialogHeader>
+                </div>
+                <AlertDialogFooter className="mt-6">
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleAddToLists}
+                    className="text-white transition bg-[#6c43e0] border-[#6c43e0] hover:bg-[#4f32a7] hover:border-[#4f32a7]"
+                    disabled={selectedListsToAdd.length === 0}
+                  >
+                    Ajouter
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
 
