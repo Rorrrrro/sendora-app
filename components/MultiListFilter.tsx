@@ -50,12 +50,12 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
           />
           <div className="absolute z-20 mt-2 w-64 bg-white border rounded-lg shadow-lg p-2 max-h-72 overflow-auto left-1/2 -translate-x-1/2">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-medium text-sm">Vos listes</span>
-              <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs px-2 py-0">Tout désélectionner</Button>
+              <span className="font-semibold text-sm pl-2">Vos listes</span>
+              <Button variant="ghost" size="sm" onClick={clearAll} className="text-[#3d247a] hover:bg-[#efeffb] hover:text-[#3d247a] text-xs px-2 py-0 font-normal">Tout désélectionner</Button>
             </div>
             <ul className="space-y-1">
               <li
-                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer"
+                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efeffb] cursor-pointer text-[#3d247a] font-normal"
                 onClick={() => {
                   if (selectedListIds.includes('none')) {
                     onChange(selectedListIds.filter(id => id !== 'none'))
@@ -75,7 +75,7 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
               {lists.map((list) => (
                 <li
                   key={list.id}
-                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer"
+                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efeffb] cursor-pointer text-[#3d247a] font-normal"
                   onClick={() => toggleList(list.id)}
                   role="option"
                   aria-selected={selectedListIds.map(String).includes(String(list.id))}

@@ -279,9 +279,9 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Sidebar avec bordures très arrondies à gauche */}
-      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem]">
+      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
         {/* Header - Avec fond complet pour éviter la transparence */}
-        <div className="bg-purple-400 py-6 text-center relative z-10">
+        <div className="bg-[#6c43e0] py-6 text-center relative z-10">
           <h2 className="text-xl font-bold text-white">Créer un contact</h2>
         </div>
 
@@ -289,7 +289,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         <form
           id="contact-form"
           onSubmit={handleSubmit}
-          className="px-8 py-4 space-y-7 h-[calc(100%-140px)] overflow-y-auto bg-white"
+          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-white"
         >
           <div className="space-y-7">
             <div>
@@ -335,7 +335,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
               <Input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 placeholder="Entrez une adresse email"
                 value={formData.email}
                 onChange={handleInputChange}
@@ -379,7 +379,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
                   <p className="text-sm text-muted-foreground">Chargement...</p>
                 </div>
               ) : (
-                <div className="mt-1 border border-purple-300 rounded-lg overflow-hidden">
+                <div className="mt-1 border border-input rounded-lg overflow-hidden">
                   <Select value={selectedListeId} onValueChange={handleSelectChange}>
                     <SelectTrigger className="border-0 focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Sélectionner une liste" />
@@ -406,16 +406,15 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
           </div>
         </form>
 
-        {/* Buttons - Plus centrés avec espacement légèrement augmenté */}
-        <div className="absolute bottom-0 left-0 right-0 px-8 py-6 bg-white border-t flex justify-center gap-8">
+        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
           <Button type="button" variant="outline" onClick={onClose}>
             Retour
           </Button>
           <Button
             type="submit"
             form="contact-form"
-            disabled={isSubmitting || !!emailError}
-            className="bg-black text-white hover:bg-black/90"
+            disabled={isSubmitting || !formData.email.trim()}
+            className="bg-[#6c43e0] text-white hover:bg-[#4f32a7]"
           >
             {isSubmitting ? "Création en cours..." : "Valider"}
           </Button>

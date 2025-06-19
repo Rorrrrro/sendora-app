@@ -283,7 +283,7 @@ export function CreateContactDialog({ open, onOpenChange, onContactCreated }: Cr
                 </div>
               ) : (
                 <Select onValueChange={handleSelectChange}>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-input focus:border-[#6c43e0] hover:border-[#6c43e0]">
                     <SelectValue placeholder="Sélectionner une liste" />
                   </SelectTrigger>
                   <SelectContent>

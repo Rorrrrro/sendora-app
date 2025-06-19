@@ -152,60 +152,66 @@ export default function CompleteProfilePage() {
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="prenom" className="block text-sm font-medium text-gray-700">
-                  Prénom
+                  Prénom <span className="text-red-600">*</span>
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <input
                     id="prenom"
                     name="prenom"
                     type="text"
-                    required
                     value={formData.prenom}
                     onChange={handleChange}
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
                   />
+                  {errorMessage === "Le prénom est requis" && (
+                    <p className="absolute left-0 -bottom-5 text-xs text-red-600">Le prénom est requis</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label htmlFor="nom" className="block text-sm font-medium text-gray-700">
-                  Nom
+                  Nom <span className="text-red-600">*</span>
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <input
                     id="nom"
                     name="nom"
                     type="text"
-                    required
                     value={formData.nom}
                     onChange={handleChange}
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
                   />
+                  {errorMessage === "Le nom est requis" && (
+                    <p className="absolute left-0 -bottom-5 text-xs text-red-600">Le nom est requis</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label htmlFor="entreprise" className="block text-sm font-medium text-gray-700">
-                  Entreprise
+                  Entreprise <span className="text-red-600">*</span>
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <input
                     id="entreprise"
                     name="entreprise"
                     type="text"
-                    required
                     value={formData.entreprise}
                     onChange={handleChange}
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
                   />
+                  {errorMessage === "Le nom de l'entreprise est requis" && (
+                    <p className="absolute left-0 -bottom-5 text-xs text-red-600">Le nom de l'entreprise est requis</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="flex w-full justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading || formData.prenom.trim() === '' || formData.nom.trim() === '' || formData.entreprise.trim() === ''}
+                  className="flex w-full justify-center rounded-xl border border-[#6c43e0] bg-[#6c43e0] px-4 py-3 text-base font-bold text-white shadow-sm hover:bg-[#4f32a7] hover:border-[#4f32a7] transition-colors focus:outline-none focus:ring-2 focus:ring-[#6c43e0] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? "Enregistrement..." : "Terminer l'inscription"}
                 </button>

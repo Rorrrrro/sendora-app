@@ -87,11 +87,16 @@ export default function ResetPasswordPage() {
                     <input
                       id="email"
                       name="email"
-                      type="email"
+                      type="text"
                       autoComplete="email"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value)
+                        if (e.target.value.includes("@")) {
+                          setError("")
+                        }
+                      }}
                       className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
                       placeholder="votre@email.com"
                     />

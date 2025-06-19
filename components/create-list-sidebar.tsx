@@ -56,26 +56,21 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
   return (
     <div className="fixed inset-0 z-50 top-0 left-0 right-0 bottom-0">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem]">
-        <div className="bg-purple-400 py-6 text-center relative z-10 flex justify-center items-center">
+      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
+        <div className="bg-[#6c43e0] py-6 text-center relative z-10 flex justify-center items-center">
           <h2 className="text-xl font-bold text-white">Créer une liste</h2>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="absolute right-4 text-white hover:bg-purple-500"
-          >
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
         <form
           id="list-form"
           onSubmit={handleSubmit}
-          className="px-8 py-4 space-y-7 h-[calc(100%-140px)] overflow-y-auto bg-white"
+          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-white"
         >
           <div className="space-y-7">
             <div>
-              <Label htmlFor="nom">Nom de la liste</Label>
+              <Label htmlFor="nom" className="flex items-center">
+                Nom de la liste <span className="text-red-500 ml-1">*</span>
+              </Label>
               <Input
                 id="nom"
                 name="nom"
@@ -95,24 +90,24 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
                 placeholder="Décrivez le but de cette liste..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
+                rows={6}
                 className="mt-1"
               />
             </div>
           </div>
         </form>
 
-        <div className="absolute bottom-0 left-0 right-0 px-8 py-6 bg-white border-t flex justify-center gap-8">
+        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
           <Button type="button" variant="outline" onClick={onClose}>
-            Retour
+            Annuler
           </Button>
           <Button
             type="submit"
             form="list-form"
             disabled={loading || !formData.nom.trim()}
-            className="bg-black text-white hover:bg-black/90"
+            className="bg-[#6c43e0] text-white hover:bg-[#4f32a7]"
           >
-            {loading ? "Création en cours..." : "Valider"}
+            {loading ? "Création en cours..." : "Enregistrer"}
           </Button>
         </div>
       </div>

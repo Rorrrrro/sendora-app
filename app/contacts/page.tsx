@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, MoreHorizontal, Upload, Trash2, Users, Download, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Upload, Trash2, Users, Download, ChevronDown, ChevronUp, UserMinus, UserPlus, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +32,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { useSearchParams } from "next/navigation"
 
 interface Contact {
   id: string
@@ -112,7 +113,7 @@ function ContactsTable({
                   onClick={onBulkAddToList}
                   className="h-8"
                 >
-                  <Users className="mr-2 h-4 w-4" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                   Ajouter à une liste
                 </Button>
                 <Button
@@ -121,6 +122,7 @@ function ContactsTable({
                   onClick={onBulkRemoveFromList}
                   className="h-8"
                 >
+                  <UserMinus className="mr-2 h-4 w-4" />
                   Enlever de la liste
                 </Button>
                 <Button
@@ -142,17 +144,17 @@ function ContactsTable({
               <table className="w-full caption-bottom text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50 transition-colors">
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[60px]">
+                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground w-[60px] text-center">
                       <Checkbox
                         checked={allFilteredSelected}
                         onCheckedChange={handleSelectAll}
                         aria-label="Sélectionner tous les contacts"
                       />
                     </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Prénom</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Nom</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date de création</th>
+                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Prénom</th>
+                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Nom</th>
+                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Email</th>
+                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Date de création</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,20 +162,20 @@ function ContactsTable({
                     <tr
                       key={contact.id}
                       className={`border-b transition-colors ${selectedContacts.has(contact.id) 
-                        ? 'bg-sidebar-selected-bg-light hover:bg-[#dddcf6] rounded-xl transition-colors' 
+                        ? 'bg-sidebar-selected-bg-light hover:bg-[#e5e4fa] rounded-xl transition-colors' 
                         : 'hover:bg-muted'}`}
                     >
-                      <td className="p-4 align-middle">
+                      <td className="p-4 align-middle text-center">
                         <Checkbox
                           checked={selectedContacts.has(contact.id)}
                           onCheckedChange={(checked) => onSelectionChange(contact.id, checked as boolean)}
                           aria-label={`Sélectionner ${contact.prenom} ${contact.nom}`}
                         />
                       </td>
-                      <td className="p-4 align-middle font-medium">{contact.prenom || "-"}</td>
-                      <td className="p-4 align-middle font-medium">{contact.nom || "-"}</td>
-                      <td className="p-4 align-middle">{contact.email || "-"}</td>
-                      <td className="p-4 align-middle">{formatDate(contact.created_at)}</td>
+                      <td className="p-4 align-middle font-medium text-center">{contact.prenom || "-"}</td>
+                      <td className="p-4 align-middle font-medium text-center">{contact.nom || "-"}</td>
+                      <td className="p-4 align-middle text-center">{contact.email || "-"}</td>
+                      <td className="p-4 align-middle text-center">{formatDate(contact.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -196,6 +198,8 @@ export default function ContactsPage() {
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
   const [showSpinner, setShowSpinner] = useState(false)
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
+  const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [currentPage, setCurrentPage] = useState(1)
   const spinnerTimeout = useRef<NodeJS.Timeout | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showRemoveFromListDialog, setShowRemoveFromListDialog] = useState(false)
@@ -205,6 +209,11 @@ export default function ContactsPage() {
   const [selectedListsToAdd, setSelectedListsToAdd] = useState<number[]>([])
   const [popoverOpen, setPopoverOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const searchParams = useSearchParams()
+  const listId = searchParams.get("list")
+  const [isReadyToFetch, setIsReadyToFetch] = useState(false)
+  const [isFirstFetchDone, setIsFirstFetchDone] = useState(false)
+  const [hasAppliedInitialFilter, setHasAppliedInitialFilter] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -383,6 +392,7 @@ export default function ContactsPage() {
         ]
         setContacts(result)
         setLoading(false)
+        setIsFirstFetchDone(true);
       })
     } else if (hasNone) {
       Promise.all([
@@ -394,6 +404,7 @@ export default function ContactsPage() {
         const contactsNoList = allContacts.filter(contact => !contactsWithList.has(contact.id))
         setContacts(contactsNoList)
         setLoading(false)
+        setIsFirstFetchDone(true);
       })
     } else if (selectedListIdsFiltered.length === 0) {
       supabase
@@ -404,6 +415,7 @@ export default function ContactsPage() {
         .then(({ data }) => {
           setContacts(data || [])
           setLoading(false)
+          setIsFirstFetchDone(true);
         })
     } else {
       const listIds = selectedListIdsFiltered.map(Number)
@@ -416,6 +428,7 @@ export default function ContactsPage() {
           if (contactIds.length === 0) {
             setContacts([])
             setLoading(false)
+            setIsFirstFetchDone(true);
           } else {
             const { data: contactsData } = await supabase
               .from("Contacts")
@@ -424,19 +437,33 @@ export default function ContactsPage() {
               .order("created_at", { ascending: false })
             setContacts(contactsData || [])
             setLoading(false)
+            setIsFirstFetchDone(true);
           }
         })
     }
   }
 
   useEffect(() => {
-    fetchContacts()
+    const listId = searchParams.get("list");
+    if (!hasAppliedInitialFilter && listId && selectedListIds.length === 0) {
+      setSelectedListIds([listId]);
+      setIsReadyToFetch(true);
+      setHasAppliedInitialFilter(true);
+    } else if (!listId && !hasAppliedInitialFilter) {
+      setIsReadyToFetch(true);
+      setHasAppliedInitialFilter(true);
+    }
+  }, [searchParams, selectedListIds.length, hasAppliedInitialFilter]);
+
+  useEffect(() => {
+    if (!user || !isReadyToFetch) return;
+    fetchContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedListIds])
+  }, [user, selectedListIds, isReadyToFetch]);
 
   useEffect(() => {
     if (loading) {
-      spinnerTimeout.current = setTimeout(() => setShowSpinner(true), 500)
+      spinnerTimeout.current = setTimeout(() => setShowSpinner(true), 200)
     } else {
       setShowSpinner(false)
       if (spinnerTimeout.current) clearTimeout(spinnerTimeout.current)
@@ -462,13 +489,21 @@ export default function ContactsPage() {
       contact.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const totalContacts = filteredContacts.length
+  const totalPages = Math.max(1, Math.ceil(totalContacts / rowsPerPage))
+  const paginatedContacts = filteredContacts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, rowsPerPage, selectedListIds])
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">Gérez vos contacts et abonnés.</p>
+            <p className="text-muted-foreground mt-3">Gérez et organisez tous vos contacts en toute simplicité</p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setCreateSidebarOpen(true)}>
@@ -488,17 +523,16 @@ export default function ContactsPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>Tous les contacts</CardTitle>
             <CardDescription>
               {(selectedListIds.length === 0 && !searchTerm) ? (
-                <>Vous avez {contacts.length} contact{contacts.length > 1 ? "s" : ""} dans votre base de données.</>
+                <span className="text-lg font-bold text-foreground">Vous avez {contacts.length} contact{contacts.length > 1 ? "s" : ""} dans votre base de données</span>
               ) : (
                 filteredContacts.length === 0 ? (
-                  <>Aucun contact ne correspond à vos filtres.</>
+                  <span className="text-lg font-bold text-foreground">Aucun contact ne correspond à vos filtres</span>
                 ) : filteredContacts.length === 1 ? (
-                  <>1 contact correspond à vos filtres.</>
+                  <span className="text-lg font-bold text-foreground">1 contact correspond à vos filtres</span>
                 ) : (
-                  <>{filteredContacts.length} contacts correspondent à vos filtres.</>
+                  <span className="text-lg font-bold text-foreground">{filteredContacts.length} contacts correspondent à vos filtres</span>
                 )
               )}
             </CardDescription>
@@ -525,27 +559,74 @@ export default function ContactsPage() {
                 />
               </div>
             </div>
-            <ContactsTable
-              contacts={filteredContacts}
-              showSpinner={showSpinner}
-              searchTerm={searchTerm}
-              formatDate={formatDate}
-              selectedContacts={selectedContacts}
-              onSelectionChange={(contactId, selected) => {
-                if (selected) {
-                  setSelectedContacts(prev => new Set(prev).add(contactId))
-                } else {
-                  setSelectedContacts(prev => {
-                    const newSet = new Set(prev)
-                    newSet.delete(contactId)
-                    return newSet
-                  })
-                }
-              }}
-              onBulkDelete={() => setShowDeleteDialog(true)}
-              onBulkAddToList={handleBulkAddToList}
-              onBulkRemoveFromList={() => setShowRemoveFromListDialog(true)}
-            />
+            {(showSpinner || (!isReadyToFetch || !isFirstFetchDone)) ? (
+              <TableSkeleton columns={5} rows={6} />
+            ) : (
+              <ContactsTable
+                contacts={paginatedContacts}
+                showSpinner={showSpinner}
+                searchTerm={searchTerm}
+                formatDate={formatDate}
+                selectedContacts={selectedContacts}
+                onSelectionChange={(contactId, selected) => {
+                  if (selected) {
+                    setSelectedContacts(prev => new Set(prev).add(contactId))
+                  } else {
+                    setSelectedContacts(prev => {
+                      const newSet = new Set(prev)
+                      newSet.delete(contactId)
+                      return newSet
+                    })
+                  }
+                }}
+                onBulkDelete={() => setShowDeleteDialog(true)}
+                onBulkAddToList={handleBulkAddToList}
+                onBulkRemoveFromList={() => setShowRemoveFromListDialog(true)}
+              />
+            )}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
+              <div className="flex items-center gap-2 pl-3">
+                <span className="text-sm">Lignes par page</span>
+                <Select value={rowsPerPage.toString()} onValueChange={v => setRowsPerPage(Number(v))}>
+                  <SelectTrigger className="w-20 h-8 text-sm ml-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10" className="text-[#3C2578] data-[state=checked]:text-[#3C2578] data-[state=checked]:font-bold data-[state=checked]:bg-[#efeffb] hover:bg-[#f4f4fd]">10</SelectItem>
+                    <SelectItem value="25" className="text-[#3C2578] data-[state=checked]:text-[#3C2578] data-[state=checked]:font-bold data-[state=checked]:bg-[#efeffb] hover:bg-[#f4f4fd]">25</SelectItem>
+                    <SelectItem value="50" className="text-[#3C2578] data-[state=checked]:text-[#3C2578] data-[state=checked]:font-bold data-[state=checked]:bg-[#efeffb] hover:bg-[#f4f4fd]">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-4 justify-end text-sm">
+                <span>
+                  {totalContacts === 0
+                    ? "0"
+                    : `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, totalContacts)} sur ${totalContacts}`}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-[#f4f4fd]"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Page précédente"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-semibold">{currentPage}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-[#f4f4fd]"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Page suivante"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogContent className="rounded-xl shadow-2xl px-8 py-8 max-w-xl">
                 <div className="flex flex-col items-center text-center gap-4">
@@ -589,14 +670,14 @@ export default function ContactsPage() {
                           {selectedListsToRemove.length === removableLists.length ? "Tout désélectionner" : "Tout sélectionner"}
                         </button>
                         {removableLists.map((list: { id: number; nom: string }) => (
-                          <label key={list.id} className="flex items-center gap-2 cursor-pointer">
+                          <label key={list.id} className="flex items-center gap-2 cursor-pointer w-full py-2 px-2">
                             <input
                               type="checkbox"
                               checked={selectedListsToRemove.includes(list.id)}
                               onChange={() => handleToggleList(list.id)}
-                              className="accent-primary"
+                              className="accent-primary w-4 h-4"
                             />
-                            <span>{list.nom}</span>
+                            <span className="text-[#3d247a]">{list.nom}</span>
                           </label>
                         ))}
                       </div>
@@ -663,7 +744,7 @@ export default function ContactsPage() {
                                     <label
                                       key={list.id}
                                       className={`flex items-center gap-2 cursor-pointer transition-colors py-3 px-3
-                                        ${isSelected ? 'bg-[#f4f4fd] hover:bg-[#dddcf6]' : 'hover:bg-muted'}`}
+                                        ${isSelected ? 'bg-[#f4f4fd] hover:bg-[#efeffb]' : 'hover:bg-muted'}`}
                                     >
                                       <input
                                         type="checkbox"
@@ -677,7 +758,7 @@ export default function ContactsPage() {
                                         }}
                                         className="accent-primary w-4 h-4"
                                       />
-                                      <span>{list.nom}</span>
+                                      <span className="text-[#3d247a]">{list.nom}</span>
                                     </label>
                                   );
                                 })}
