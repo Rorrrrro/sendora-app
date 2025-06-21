@@ -98,7 +98,11 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
         </form>
 
         <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button
+            type="button"
+            onClick={onClose}
+            className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+          >
             Annuler
           </Button>
           <Button

@@ -111,35 +111,6 @@ export default function ListesPage() {
     })
   }
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Listes</h1>
-              <p className="text-muted-foreground mt-3">Créez, modifiez et organisez facilement vos listes pour des interactions ciblées et une gestion optimale</p>
-            </div>
-            <div className="flex gap-3">
-              <Button className="bg-[#6c43e0] border-[#6c43e0] text-white font-semibold hover:bg-[#4f32a7] hover:border-[#4f32a7] transition">
-                <Plus className="mr-2 h-4 w-4" />
-                Créer une liste
-              </Button>
-            </div>
-          </div>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>Toutes les listes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TableSkeleton columns={5} rows={6} />
-            </CardContent>
-          </Card>
-        </div>
-      </AppLayout>
-    )
-  }
-
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -156,10 +127,14 @@ export default function ListesPage() {
           </div>
         </div>
 
-        <Card>
+        <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>
-              <span className="text-lg font-bold text-foreground">Vous avez {listes.length} liste{listes.length > 1 ? "s" : ""} dans votre base de données</span>
+              {loading ? (
+                <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
+              ) : (
+                <span className="text-lg font-bold text-foreground">Vous avez {listes.length} liste{listes.length > 1 ? "s" : ""} dans votre base de données</span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,7 +151,9 @@ export default function ListesPage() {
               </div>
             </div>
 
-            {filteredListes.length === 0 ? (
+            {loading ? (
+              <TableSkeleton columns={5} rows={6} />
+            ) : filteredListes.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   {searchTerm
@@ -190,33 +167,33 @@ export default function ListesPage() {
                   <table className="w-full caption-bottom text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50 transition-colors">
-                        <th className="h-12 px-4 font-medium text-muted-foreground align-middle text-center">Nom</th>
-                        <th className="h-12 px-4 font-medium text-muted-foreground align-middle text-center">Description</th>
-                        <th className="h-12 px-4 font-medium text-muted-foreground align-middle text-center">Contacts</th>
-                        <th className="h-12 px-4 font-medium text-muted-foreground align-middle text-center">Date de création</th>
-                        <th className="h-12 px-4 font-medium text-muted-foreground w-[50px] align-middle text-center">Actions</th>
+                        <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Nom</th>
+                        <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Description</th>
+                        <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Nombre de contacts</th>
+                        <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Date de création</th>
+                        <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground w-16 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paginatedListes.map((liste) => (
-                        <tr key={liste.id} className="border-b transition-colors hover:bg-muted">
-                          <td className="p-4 h-12 align-middle text-center font-medium">{liste.nom || "-"}</td>
-                          <td className="p-4 h-12 align-middle text-center">
-                            <div className="max-w-[200px] truncate mx-auto" title={liste.description}>
+                        <tr key={liste.id} className="border-b transition-colors hover:bg-muted h-14">
+                          <td className="p-4 align-middle text-left font-medium">{liste.nom || "-"}</td>
+                          <td className="p-4 align-middle text-left">
+                            <div className="max-w-[200px] truncate" title={liste.description}>
                               {liste.description || "-"}
                             </div>
                           </td>
-                          <td className="p-4 h-12 align-middle text-center">
-                            <div className="flex items-center gap-1 justify-center">
+                          <td className="p-4 align-middle text-left">
+                            <div className="flex items-center gap-1">
                               <Users className="h-4 w-4 text-muted-foreground" />
                               {liste.nb_contacts || 0}
                             </div>
                           </td>
-                          <td className="p-4 h-12 align-middle text-center">{formatDate(liste.created_at)}</td>
-                          <td className="p-4 h-12 align-middle text-center">
+                          <td className="p-4 align-middle text-left">{formatDate(liste.created_at)}</td>
+                          <td className="p-4 align-middle text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[#efeffb]">
                                   <MoreHorizontal className="h-4 w-4" />
                                   <span className="sr-only">Ouvrir le menu</span>
                                 </Button>

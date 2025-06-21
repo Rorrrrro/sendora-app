@@ -42,7 +42,7 @@ export default function AccueilPage() {
         </div>
 
         {/* Getting Started Steps */}
-        <Card className="border-l-4 border-l-[#9D5CFF]">
+        <Card className="border-l-4 border-l-[#9D5CFF] border-y-0 border-r-0 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#9D5CFF]/10 text-[#9D5CFF]">
@@ -120,7 +120,7 @@ export default function AccueilPage() {
 
         {/* Recent Activity */}
         <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Campagnes Récentes</CardTitle>
               <CardDescription>Vos dernières campagnes email</CardDescription>
@@ -165,7 +165,7 @@ export default function AccueilPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Contacts Récents</CardTitle>
               <CardDescription>Les derniers contacts ajoutés</CardDescription>

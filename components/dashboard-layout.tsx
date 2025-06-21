@@ -206,41 +206,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Profile dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger className="focus:outline-none">
-                <div className="flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 hover:font-bold hover:text-[#7739D1]">
-                  <Building className="h-5 w-5 text-gray-600" />
-                  <span className="font-medium uppercase text-gray-800">
+              <DropdownMenuTrigger className="focus:outline-none group">
+                <div className="flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 group-data-[state=open]:bg-[#efeffb] hover:bg-[#efeffb] group-data-[state=open]:text-[#2d1863] hover:text-[#2d1863]">
+                  <Building
+                    className="h-5 w-5"
+                    style={{ color: 'inherit' }}
+                  />
+                  <span className="font-bold uppercase text-gray-800 group-data-[state=open]:text-[#2d1863] hover:text-[#2d1863] group-data-[state=open]:font-bold hover:font-bold">
                     {isLoading ? "..." : user?.entreprise || "SENDORA"}
                   </span>
-                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                  <ChevronDown className="h-4 w-4 text-gray-600 group-data-[state=open]:rotate-180" />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-1">
-                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
-                  <Link href="/account" className="flex w-full items-center">
-                    <User className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+              <DropdownMenuContent align="end" className="rounded-xl bg-white shadow-lg border p-1 min-w-[180px]">
+                <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
+                  <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <User className="mr-2 h-5 w-5 text-[#3d247a]" />
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
-                  <Link href="/account" className="flex w-full items-center">
-                    <CreditCard className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
+                  <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <CreditCard className="mr-2 h-5 w-5 text-[#3d247a]" />
                     Mon plan
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]">
-                  <Link href="/account" className="flex w-full items-center">
-                    <Settings className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
+                  <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <Settings className="mr-2 h-5 w-5 text-[#3d247a]" />
                     Paramètres
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem
-                  className="cursor-pointer py-2 px-4 hover:font-bold hover:text-[#7739D1]"
-                  onClick={handleSignOut}
-                >
-                  <div className="flex w-full items-center">
-                    <LogOut className="mr-2 h-4 w-4 text-[#9D5CFF]" />
+                <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]" onClick={handleSignOut}>
+                  <div className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <LogOut className="mr-2 h-5 w-5 text-[#3d247a]" />
                     Déconnexion
                   </div>
                 </DropdownMenuItem>

@@ -1,14 +1,22 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef } from "react"
-import { X, Upload, Cloud } from "lucide-react"
+import { X, Upload, Cloud, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
-import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/dashboard-layout"
+import { useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import Papa, { ParseResult } from "papaparse"
 
 export default function ImportContactsPage() {
   const { user } = useUser()
@@ -18,27 +26,79 @@ export default function ImportContactsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createBrowserClient()
   const router = useRouter()
+  const [csvPreview, setCsvPreview] = useState<string[][] | null>(null)
+  const [csvHeaders, setCsvHeaders] = useState<string[] | null>(null)
+  const [csvFileName, setCsvFileName] = useState<string | null>(null)
+  const [csvRowCount, setCsvRowCount] = useState<number>(0)
+  const [isDragActive, setIsDragActive] = useState(false)
+  const [step, setStep] = useState(1)
+  const [columnMapping, setColumnMapping] = useState<{ [key: string]: string }>({})
+  const contactAttributes = [
+    { value: 'ignore', label: 'Ne pas importer' },
+    { value: 'prenom', label: 'Prénom' },
+    { value: 'nom', label: 'Nom' },
+    { value: 'email', label: 'Email' },
+    { value: 'entreprise', label: 'Entreprise' },
+    { value: 'telephone', label: 'Téléphone' },
+    // Ajoute ici d'autres attributs si besoin
+  ]
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFile = (selectedFile: File) => {
     if (selectedFile && selectedFile.type === "text/csv") {
       setFile(selectedFile)
       setError(null)
+      setCsvFileName(selectedFile.name)
+      Papa.parse(selectedFile, {
+        complete: (results: any) => {
+          const data = results.data as string[][]
+          if (data.length > 1) {
+            const headers = data[0]
+            setCsvHeaders(headers)
+            setCsvPreview(data.slice(1, 11))
+            setCsvRowCount(data.length - 1)
+            const initialMapping = headers.reduce((acc, header) => {
+              acc[header] = 'ignore'
+              return acc
+            }, {} as { [key: string]: string })
+            setColumnMapping(initialMapping)
+          } else {
+            setCsvHeaders(null)
+            setCsvPreview(null)
+            setCsvRowCount(0)
+          }
+        },
+        skipEmptyLines: true
+      })
     } else {
       setFile(null)
       setError("Veuillez sélectionner un fichier CSV valide")
+      setCsvHeaders(null)
+      setCsvPreview(null)
+      setCsvFileName(null)
+      setCsvRowCount(0)
     }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) handleFile(selectedFile)
+  }
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragActive(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragActive(false)
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    setIsDragActive(false)
     const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile && droppedFile.type === "text/csv") {
-      setFile(droppedFile)
-      setError(null)
-    } else {
-      setError("Veuillez déposer un fichier CSV valide")
-    }
+    if (droppedFile) handleFile(droppedFile)
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -74,7 +134,6 @@ export default function ImportContactsPage() {
       const content = await file.text()
       const contacts = parseCSV(content)
 
-      // Map the contacts to match your database schema
       const mappedContacts = contacts.map((contact) => ({
         prenom: contact.firstname || "",
         nom: contact.lastname || "",
@@ -90,7 +149,7 @@ export default function ImportContactsPage() {
         throw error
       }
 
-      router.push("/contacts") // Redirect to contacts page after successful import
+      router.push("/contacts")
     } catch (err) {
       console.error("Error importing contacts:", err)
       setError("Une erreur est survenue lors de l'importation des contacts")
@@ -101,102 +160,214 @@ export default function ImportContactsPage() {
 
   return (
     <AppLayout>
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between p-6 border-b">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Importer des contacts depuis un fichier</h2>
-              <p className="text-gray-600 mt-2">
-                Téléversez un fichier contenant tous vos contacts et leurs informations. Cette méthode est
-                particulièrement utile si vous avez un grand nombre de contacts à importer.
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/contacts")} className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
-            </Button>
+      <div className="space-y-6">
+        <div className="max-w-4xl mx-auto mb-8 flex flex-row items-start justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-3xl font-bold tracking-tight">Importer des contacts depuis un fichier</h1>
+            <p className="text-muted-foreground mt-3">Téléversez un fichier CSV contenant vos contacts et leurs informations. Idéal pour importer un grand nombre de contacts.</p>
           </div>
-
-          <div className="p-6">
-            <div className="mb-8">
-              <div className="flex items-center mb-4">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-medium mr-3">
-                  1
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Importez votre fichier</h3>
-              </div>
-              <p className="text-gray-600 mb-6 ml-9">Sélectionnez un fichier contenant vos contacts à importer.</p>
-
-              <div
-                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
-                  error ? "border-red-400 bg-red-50" : "border-gray-300 hover:border-gray-400"
-                }`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4 relative">
-                    <Cloud className="w-8 h-8 text-gray-400" />
-                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
-                      <Upload className="w-4 h-4 text-white" />
+          <button
+            onClick={() => router.push('/contacts')}
+            className="text-gray-400 hover:text-gray-700 text-2xl focus:outline-none ml-4 mt-1 rounded-full transition-colors hover:bg-gray-100 p-1"
+            title="Retour à la liste des contacts"
+          >
+            <X className="w-7 h-7" />
+          </button>
+        </div>
+        <Card className="border-none shadow-sm max-w-4xl mx-auto relative">
+          <CardContent className="pt-10 pb-10">
+            {/* Étape 1 */}
+            <div className="mb-12">
+              {step > 1 ? (
+                // Vue "validée" de l'étape 1
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-8 h-8 text-green-500" />
+                      <span className="text-xl font-semibold text-[#23272f]">Importer un fichier</span>
                     </div>
-                  </div>
-                  <p className="text-lg text-gray-700 mb-2">Sélectionnez votre fichier ou déposez-le ici</p>
-                  <p className="text-sm text-gray-500">.csv</p>
-                </div>
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-
-            <div className={error ? "opacity-50" : ""}>
-              <div className="flex items-center mb-4">
-                <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium mr-3 ${
-                    error ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600"
-                  }`}
-                >
-                  2
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Mapper les données</h3>
-              </div>
-
-              {file && (
-                <div className="ml-9">
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-gray-600 mb-2">Fichier sélectionné :</p>
-                    <p className="font-medium text-gray-900">{file.name}</p>
-                    <p className="text-sm text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
+                    <button 
                       onClick={() => {
-                        setFile(null)
+                        setStep(1);
+                        setColumnMapping({});
                       }}
+                      className="font-bold text-lg text-[#6B5DE6] hover:text-[#4f32a7] mr-8 underline"
                     >
-                      Changer de fichier
-                    </Button>
-                    <Button
-                      onClick={handleImport}
-                      disabled={isLoading}
-                      className="bg-black text-white hover:bg-gray-800"
-                    >
-                      {isLoading ? "Importation..." : "Importer les contacts"}
-                    </Button>
+                      Edit
+                    </button>
                   </div>
+                   {csvFileName && csvHeaders && (
+                    <div className="ml-11 text-muted-foreground">
+                      {csvFileName} : {csvRowCount} lignes et {csvHeaders.length} colonnes
+                    </div>
+                  )}
                 </div>
+              ) : (
+                // Vue "active" de l'étape 1
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl font-bold text-[#23272f]">①</span>
+                    <span className="text-xl font-semibold text-[#23272f]">Importez votre fichier</span>
+                  </div>
+                  <div className="text-muted-foreground text-base mb-6 ml-8">Sélectionnez un fichier contenant vos contacts à importer.</div>
+                  <div className="ml-8">
+                    {/* Drag & drop centré, large, icône visible */}
+                    {!csvPreview && (
+                      <div
+                        className={`border-2 rounded-xl p-12 text-center transition-colors cursor-pointer bg-white flex flex-col items-center justify-center
+                          ${isDragActive ? 'border-[#6c43e0] bg-[#f4f4fd]' : 'border-[#bdbdbd]'}
+                          hover:border-[#6c43e0] hover:bg-[#fafbfc]`
+                        }
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragEnter}
+                        onDragLeave={handleDragLeave}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Cloud className="w-24 h-24 text-gray-300 mb-6" />
+                        <p className="text-2xl text-[#23272f] font-light mb-2 tracking-wide">Sélectionnez votre fichier ou déposez-le ici</p>
+                        <p className="text-lg font-bold text-[#23272f]">.csv</p>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    {step === 1 && csvPreview && csvHeaders && (
+                      <div className="mt-8">
+                        <div className="rounded border border-green-400 bg-green-50 text-green-900 px-4 py-3 mb-4 text-lg">
+                          <div className="font-semibold mb-1">Votre fichier a bien été importé !</div>
+                          <div className="text-green-800 text-sm">{csvFileName}</div>
+                        </div>
+                        <div className="mb-2 text-sm text-muted-foreground">
+                          Aperçu de votre fichier ({csvPreview.length} ligne{csvPreview.length > 1 ? 's' : ''} affichée{csvPreview.length > 1 ? 's' : ''})
+                        </div>
+                        <div className="overflow-x-auto rounded-lg border">
+                          <table className="min-w-full bg-white text-sm">
+                            <thead>
+                              <tr>
+                                {csvHeaders.map((header, idx) => (
+                                  <th key={idx} className="px-4 py-2 font-semibold border-b text-left whitespace-nowrap">{header}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvPreview.map((row, i) => (
+                                <tr key={i} className="border-b last:border-b-0">
+                                  {row.map((cell, j) => (
+                                    <td key={j} className="px-4 py-2 whitespace-nowrap">{cell}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="flex justify-center gap-10 mt-8">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFile(null);
+                              setCsvPreview(null);
+                              setCsvHeaders(null);
+                              setCsvFileName(null);
+                              setCsvRowCount(0);
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                            className="bg-white text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-6 shadow-none transition"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            type="button"
+                            className="bg-[#6c43e0] text-white font-semibold rounded-md h-10 px-6 shadow-none transition hover:bg-[#4f32a7]"
+                            onClick={() => setStep(2)}
+                          >
+                            Valider
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </div>
-        </div>
+            <hr className="my-10 border-[#e0e0e0]" />
+            {/* Étape 2 - Titre toujours visible, contenu seulement si step === 2 */}
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`text-2xl font-bold ${step === 2 ? 'text-[#23272f]' : 'text-[#bdbdbd]'}`}>②</span>
+                <span className={`text-xl font-semibold ${step === 2 ? 'text-[#23272f]' : 'text-[#bdbdbd]'}`}>Mapper les données</span>
+              </div>
+              {step === 2 && csvHeaders && csvPreview && (
+                <>
+                  <div className="ml-11 mb-6 text-base text-[#23272f]">Associez vos colonnes aux attributs proposés afin de garantir une importation correcte des données.</div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-base">
+                      <thead>
+                        <tr>
+                          <th className="px-6 py-3 text-left text-sm font-bold text-muted-foreground uppercase tracking-wider">Nom de la colonne</th>
+                          <th className="px-6 py-3 text-left text-sm font-bold text-muted-foreground uppercase tracking-wider">Données</th>
+                          <th className="px-6 py-3 text-left text-sm font-bold text-muted-foreground uppercase tracking-wider">Attribut du contact</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvHeaders.flatMap((header, idx) => [
+                          <tr key={header} className="bg-[#fafbfc] border border-[#e0e0e0]">
+                            <td className="px-6 py-4 font-semibold text-lg text-[#23272f]">{header}</td>
+                            <td className="px-6 py-4">
+                              {csvPreview.slice(0, 3).map((row, i) => (
+                                <div key={i}>{row[idx]}</div>
+                              ))}
+                            </td>
+                            <td className="px-6 py-4">
+                               <Select
+                                value={columnMapping[header]}
+                                onValueChange={(value) => {
+                                  setColumnMapping({ ...columnMapping, [header]: value })
+                                }}
+                              >
+                                <SelectTrigger className="w-[220px] bg-white">
+                                  <SelectValue placeholder="Sélectionner une valeur" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {contactAttributes.map((attr) => (
+                                    <SelectItem key={attr.value} value={attr.value}>{attr.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>,
+                          <tr key={`${header}-spacer`} className="h-6" />,
+                        ])}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex justify-center mt-8">
+                    <button
+                      type="button"
+                      className="bg-[#6c43e0] text-white font-semibold rounded-md h-10 px-6 shadow-none transition hover:bg-[#4f32a7]"
+                      onClick={() => setStep(3)}
+                    >
+                      Valider
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <hr className="my-10 border-[#e0e0e0]" />
+            {/* Étape 3 */}
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl font-bold text-[#bdbdbd]">③</span>
+                <span className="text-xl font-semibold text-[#bdbdbd]">Sélectionner une liste</span>
+              </div>
+              {/* Description masquée pour l'étape 3 */}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   )

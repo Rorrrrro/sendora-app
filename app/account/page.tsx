@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { AppLayout } from "@/components/dashboard-layout"
 import { useUser } from "@/contexts/user-context"
 import { createBrowserClient } from "@/lib/supabase"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function AccountPage() {
   const { user, refreshUserData, isLoading } = useUser()
@@ -24,6 +25,15 @@ export default function AccountPage() {
   })
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateMessage, setUpdateMessage] = useState({ type: "", text: "" })
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwords, setPasswords] = useState({
+    current: "",
+    new: "",
+    confirm: ""
+  })
+  const [passwordMessage, setPasswordMessage] = useState({ type: "", text: "" })
 
   // Update form data when user data is loaded
   useEffect(() => {
@@ -80,6 +90,37 @@ export default function AccountPage() {
       })
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setPasswords((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordMessage({ type: "", text: "" })
+    if (!passwords.new || passwords.new !== passwords.confirm) {
+      setPasswordMessage({ type: "error", text: "Les mots de passe ne correspondent pas" })
+      return
+    }
+    // Vérification du mot de passe actuel
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: passwords.current
+    })
+    if (signInError) {
+      setPasswordMessage({ type: "error", text: "Le mot de passe actuel est incorrect" })
+      return
+    }
+    // Mise à jour du mot de passe
+    const { error } = await supabase.auth.updateUser({ password: passwords.new })
+    if (error) {
+      setPasswordMessage({ type: "error", text: "Le nouveau mot de passe doit être différent de l'ancien" })
+    } else {
+      setPasswordMessage({ type: "success", text: "Mot de passe mis à jour avec succès" })
+      setPasswords({ current: "", new: "", confirm: "" })
     }
   }
 
@@ -175,7 +216,7 @@ export default function AccountPage() {
                   )}
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" disabled={isLoading || isUpdating}>
+                  <Button type="submit" disabled={isLoading || isUpdating} className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white">
                     {isUpdating ? "Enregistrement..." : "Enregistrer les modifications"}
                   </Button>
                 </CardFooter>
@@ -188,23 +229,58 @@ export default function AccountPage() {
                 <CardTitle>Mot de passe</CardTitle>
                 <CardDescription>Changez votre mot de passe.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Mot de passe actuel</Label>
-                  <Input id="current-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
-                  <Input id="new-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-                  <Input id="confirm-password" type="password" />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button>Mettre à jour le mot de passe</Button>
-              </CardFooter>
+              <form onSubmit={handlePasswordSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Mot de passe actuel</Label>
+                    <div className="relative">
+                      <Input id="current-password" name="current" type={showCurrentPassword ? "text" : "password"} value={passwords.current} onChange={handlePasswordChange} />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-500"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        tabIndex={-1}
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                    <div className="relative">
+                      <Input id="new-password" name="new" type={showNewPassword ? "text" : "password"} value={passwords.new} onChange={handlePasswordChange} />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-500"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                    <div className="relative">
+                      <Input id="confirm-password" name="confirm" type={showConfirmPassword ? "text" : "password"} value={passwords.confirm} onChange={handlePasswordChange} />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-500"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  {passwordMessage.text && (
+                    <div className={`text-sm ${passwordMessage.type === "success" ? "text-green-600" : "text-red-600"}`}>{passwordMessage.text}</div>
+                  )}
+                </CardContent>
+                <CardFooter>
+                  <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white" type="submit">Mettre à jour le mot de passe</Button>
+                </CardFooter>
+              </form>
             </Card>
           </TabsContent>
           <TabsContent value="notifications" className="space-y-4 pt-4">
@@ -223,7 +299,7 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" defaultChecked className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>
@@ -237,7 +313,7 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>
@@ -251,14 +327,14 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" defaultChecked className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Enregistrer les préférences</Button>
+                <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white">Enregistrer les préférences</Button>
               </CardFooter>
             </Card>
           </TabsContent>

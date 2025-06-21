@@ -6,10 +6,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select"
 import { PlusCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Liste {
   id: string
@@ -373,24 +374,30 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
                     Annuler
                   </Button>
                 </div>
-              ) : listesLoading ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-full h-10 bg-muted animate-pulse rounded-md"></div>
-                  <p className="text-sm text-muted-foreground">Chargement...</p>
-                </div>
               ) : (
-                <div className="mt-1 border border-input rounded-lg overflow-hidden">
+                <div className="mt-1">
                   <Select value={selectedListeId} onValueChange={handleSelectChange}>
-                    <SelectTrigger className="border-0 focus:ring-0 focus:ring-offset-0">
+                    <SelectTrigger
+                      className="w-full h-10 text-sm border border-[#e5e7eb] rounded-lg bg-[#F9F9FB] text-[#737373] hover:border-[#6c43e0] data-[state=open]:border-[#6c43e0] data-[state=open]:text-[#3C2578]"
+                    >
                       <SelectValue placeholder="Sélectionner une liste" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Aucune liste</SelectItem>
-                      {listes.map((liste) => (
-                        <SelectItem key={liste.id} value={String(liste.id)}>
-                          {liste.nom} ({liste.nb_contacts || 0} contacts)
-                        </SelectItem>
-                      ))}
+                      {listesLoading ? (
+                        <div className="p-2 space-y-2">
+                          <Skeleton className="h-8 w-full" />
+                          <Skeleton className="h-8 w-full" />
+                          <Skeleton className="h-8 w-full" />
+                        </div>
+                      ) : (
+                        listes.map((liste) => (
+                          <SelectItem key={liste.id} value={String(liste.id)}>
+                            {liste.nom} ({liste.nb_contacts || 0} contacts)
+                          </SelectItem>
+                        ))
+                      )}
+                      <SelectSeparator />
                       <SelectItem value="create-new" className="text-primary">
                         <div className="flex items-center">
                           <PlusCircle className="mr-2 h-4 w-4" />
@@ -407,7 +414,11 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         </form>
 
         <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button
+            type="button"
+            onClick={onClose}
+            className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+          >
             Retour
           </Button>
           <Button

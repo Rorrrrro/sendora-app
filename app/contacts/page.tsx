@@ -32,7 +32,9 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
 
 interface Contact {
   id: string
@@ -73,15 +75,14 @@ function ContactsTable({
       contact.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const allFilteredSelected = filteredContacts.every(contact => selectedContacts.has(contact.id))
-  const someFilteredSelected = filteredContacts.some(contact => selectedContacts.has(contact.id))
-
   const handleSelectAll = (checked: boolean) => {
     filteredContacts.forEach(contact => {
       onSelectionChange(contact.id, checked)
     })
   }
 
+  const allFilteredSelected = filteredContacts.length > 0 && filteredContacts.every(contact => selectedContacts.has(contact.id))
+  const someFilteredSelected = filteredContacts.some(contact => selectedContacts.has(contact.id))
   const selectedCount = selectedContacts.size
 
   return (
@@ -111,7 +112,7 @@ function ContactsTable({
                   variant="outline"
                   size="sm"
                   onClick={onBulkAddToList}
-                  className="h-8"
+                  className="h-8 bg-white text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Ajouter à une liste
@@ -120,7 +121,7 @@ function ContactsTable({
                   variant="outline"
                   size="sm"
                   onClick={onBulkRemoveFromList}
-                  className="h-8"
+                  className="h-8 bg-white text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
                 >
                   <UserMinus className="mr-2 h-4 w-4" />
                   Enlever de la liste
@@ -151,10 +152,10 @@ function ContactsTable({
                         aria-label="Sélectionner tous les contacts"
                       />
                     </th>
-                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Prénom</th>
-                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Nom</th>
-                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Email</th>
-                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-center">Date de création</th>
+                    <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Prénom</th>
+                    <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Nom</th>
+                    <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Email</th>
+                    <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Date de création</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,17 +166,17 @@ function ContactsTable({
                         ? 'bg-sidebar-selected-bg-light hover:bg-[#e5e4fa] rounded-xl transition-colors' 
                         : 'hover:bg-muted'}`}
                     >
-                      <td className="p-4 align-middle text-center">
+                      <td className="p-4 align-middle text-center h-14">
                         <Checkbox
                           checked={selectedContacts.has(contact.id)}
                           onCheckedChange={(checked) => onSelectionChange(contact.id, checked as boolean)}
                           aria-label={`Sélectionner ${contact.prenom} ${contact.nom}`}
                         />
                       </td>
-                      <td className="p-4 align-middle font-medium text-center">{contact.prenom || "-"}</td>
-                      <td className="p-4 align-middle font-medium text-center">{contact.nom || "-"}</td>
-                      <td className="p-4 align-middle text-center">{contact.email || "-"}</td>
-                      <td className="p-4 align-middle text-center">{formatDate(contact.created_at)}</td>
+                      <td className="p-4 align-middle font-medium text-left h-14">{contact.prenom || "-"}</td>
+                      <td className="p-4 align-middle font-medium text-left h-14">{contact.nom || "-"}</td>
+                      <td className="p-4 align-middle text-left h-14">{contact.email || "-"}</td>
+                      <td className="p-4 align-middle text-left h-14">{formatDate(contact.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -214,6 +215,7 @@ export default function ContactsPage() {
   const [isReadyToFetch, setIsReadyToFetch] = useState(false)
   const [isFirstFetchDone, setIsFirstFetchDone] = useState(false)
   const [hasAppliedInitialFilter, setHasAppliedInitialFilter] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     if (user) {
@@ -503,41 +505,43 @@ export default function ContactsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground mt-3">Gérez et organisez tous vos contacts en toute simplicité</p>
+            <p className="text-muted-foreground mt-3">Gérez et organisez tous vos contacts en toute simplicité.</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setCreateSidebarOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => setCreateSidebarOpen(true)}
+              className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+            >
+              <Plus className="mr-2 h-4 w-4 text-[#23272f]" />
               Créer un contact
             </Button>
-            <Link href="/import-contacts" passHref>
-              <Button
-                className="bg-[#6c43e0] border-[#6c43e0] text-white font-semibold hover:bg-[#4f32a7] hover:border-[#4f32a7] transition"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Importer des contacts
-              </Button>
-            </Link>
+            <Button
+              onClick={() => router.push('/import-contacts')}
+              className="bg-[#6c43e0] text-white hover:bg-[#4f32a7]"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importer des contacts
+            </Button>
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>
-              {(selectedListIds.length === 0 && !searchTerm) ? (
-                <span className="text-lg font-bold text-foreground">Vous avez {contacts.length} contact{contacts.length > 1 ? "s" : ""} dans votre base de données</span>
-              ) : (
-                filteredContacts.length === 0 ? (
-                  <span className="text-lg font-bold text-foreground">Aucun contact ne correspond à vos filtres</span>
-                ) : filteredContacts.length === 1 ? (
-                  <span className="text-lg font-bold text-foreground">1 contact correspond à vos filtres</span>
+        <Card className="border-none shadow-sm">
+          <CardContent className="pt-6">
+            <div className="mb-4">
+              <span className="text-lg font-bold text-foreground">
+                {!isFirstFetchDone ? (
+                  <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
+                ) : searchTerm || selectedListIds.length > 0 ? (
+                  `${filteredContacts.length} contact${
+                    filteredContacts.length > 1 ? "s" : ""
+                  } trouvé${filteredContacts.length > 1 ? "s" : ""}`
                 ) : (
-                  <span className="text-lg font-bold text-foreground">{filteredContacts.length} contacts correspondent à vos filtres</span>
-                )
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+                  `Vous avez ${contacts.length} contact${
+                    contacts.length > 1 ? "s" : ""
+                  } dans votre base de données`
+                )}
+              </span>
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex-1">
                 <div className="relative max-w-sm">
@@ -632,16 +636,19 @@ export default function ContactsPage() {
                 <div className="flex flex-col items-center text-center gap-4">
                   <AlertDialogHeader className="mb-2">
                     <AlertDialogTitle className="mb-4 text-2xl font-bold">
-                      Supprimer définitivement
+                      Êtes-vous sûr de vouloir supprimer ?
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-[15px]">
-                      Vous êtes sur le point de supprimer {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""} sélectionné{selectedContacts.size > 1 ? "s" : ""}.
-                      <span className="block mt-3">La suppression est permanente et ne peut pas être annulée.</span>
+                      Cette action est irréversible. {selectedContacts.size > 1 ? `Les ${selectedContacts.size} contacts seront` : "Le contact sera"} définitivement supprimé{selectedContacts.size > 1 ? "s" : ""}.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                 </div>
                 <AlertDialogFooter className="mt-6">
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogCancel
+                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                  >
+                    Annuler
+                  </AlertDialogCancel>
                   <AlertDialogAction onClick={handleBulkDelete} style={{ backgroundColor: '#d21c3c', borderColor: '#d21c3c' }} className="text-white hover:opacity-90">
                     Supprimer
                   </AlertDialogAction>
@@ -653,13 +660,17 @@ export default function ContactsPage() {
                 <div className="flex flex-col items-center text-center gap-4 w-full">
                   <AlertDialogHeader className="mb-2 w-full">
                     <AlertDialogTitle className="mb-4 text-2xl font-bold">
-                      Retirer de liste(s)
+                      Enlever de la liste(s)
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-[15px] mb-4">
-                      Sélectionnez les listes dont vous souhaitez retirer {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""}.
+                      {selectedContacts.size > 1
+                        ? `Sélectionnez la ou les listes desquelles vous souhaitez retirer les ${selectedContacts.size} contacts sélectionnés.`
+                        : "Sélectionnez la ou les listes desquelles vous souhaitez retirer ce contact."}
                     </AlertDialogDescription>
                     {removableLists.length === 0 ? (
-                      <div className="text-muted-foreground text-sm">Aucune liste à retirer pour ces contacts.</div>
+                      <p className="text-sm text-muted-foreground py-4">
+                        Aucune liste à retirer pour {selectedContacts.size > 1 ? "ces contacts" : "ce contact"}.
+                      </p>
                     ) : (
                       <div className="w-full flex flex-col items-start gap-2">
                         <button
@@ -671,11 +682,13 @@ export default function ContactsPage() {
                         </button>
                         {removableLists.map((list: { id: number; nom: string }) => (
                           <label key={list.id} className="flex items-center gap-2 cursor-pointer w-full py-2 px-2">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedListsToRemove.includes(list.id)}
-                              onChange={() => handleToggleList(list.id)}
-                              className="accent-primary w-4 h-4"
+                              onCheckedChange={() => handleToggleList(list.id)}
+                              hollow={true}
+                              className="border-[#6c43e0] data-[state=checked]:text-[#6c43e0] data-[state=checked]:!bg-transparent"
+                              icon={<svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4"><circle cx="8" cy="8" r="4" /></svg>}
+                              aria-label={list.nom}
                             />
                             <span className="text-[#3d247a]">{list.nom}</span>
                           </label>
@@ -684,8 +697,12 @@ export default function ContactsPage() {
                     )}
                   </AlertDialogHeader>
                 </div>
-                <AlertDialogFooter className="mt-6">
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                  >
+                    Annuler
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleRemoveFromLists}
                     className="text-white transition bg-[#6c43e0] border-[#6c43e0] hover:bg-[#4f32a7] hover:border-[#4f32a7]"
@@ -704,7 +721,9 @@ export default function ContactsPage() {
                       Ajouter à une liste(s)
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-[15px] mb-4">
-                      Sélectionnez les listes auxquelles vous souhaitez ajouter {selectedContacts.size} contact{selectedContacts.size > 1 ? "s" : ""}.
+                      {selectedContacts.size > 1
+                        ? `Sélectionnez la ou les listes auxquelles vous souhaitez ajouter les ${selectedContacts.size} contacts sélectionnés.`
+                        : "Sélectionnez la ou les listes auxquelles vous souhaitez ajouter ce contact."}
                     </AlertDialogDescription>
                     {listes.length === 0 ? (
                       <div className="text-muted-foreground text-sm">Aucune liste disponible.</div>
@@ -746,17 +765,18 @@ export default function ContactsPage() {
                                       className={`flex items-center gap-2 cursor-pointer transition-colors py-3 px-3
                                         ${isSelected ? 'bg-[#f4f4fd] hover:bg-[#efeffb]' : 'hover:bg-muted'}`}
                                     >
-                                      <input
-                                        type="checkbox"
+                                      <Checkbox
                                         checked={isSelected}
-                                        onChange={() => {
+                                        onCheckedChange={() => {
                                           setSelectedListsToAdd((prev) =>
                                             prev.includes(list.id)
                                               ? prev.filter((id) => id !== list.id)
                                               : [...prev, list.id]
                                           );
                                         }}
-                                        className="accent-primary w-4 h-4"
+                                        className="h-4 w-4 border-[#6c43e0]"
+                                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
+                                        aria-label={list.nom}
                                       />
                                       <span className="text-[#3d247a]">{list.nom}</span>
                                     </label>
@@ -771,7 +791,11 @@ export default function ContactsPage() {
                   </AlertDialogHeader>
                 </div>
                 <AlertDialogFooter className="mt-6">
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogCancel
+                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                  >
+                    Annuler
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleAddToLists}
                     className="text-white transition bg-[#6c43e0] border-[#6c43e0] hover:bg-[#4f32a7] hover:border-[#4f32a7]"
@@ -791,6 +815,11 @@ export default function ContactsPage() {
           onContactCreated={fetchContacts}
         />
       </div>
+      <style jsx global>{`
+        [data-state='open'] .chevron-down {
+          transform: rotate(180deg);
+        }
+      `}</style>
     </AppLayout>
   )
 }

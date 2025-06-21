@@ -22,7 +22,7 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
     if (selectedListIds.map(String).includes(idStr)) {
       onChange(selectedListIds.filter((lid) => String(lid) !== idStr))
     } else {
-      onChange([...selectedListIds.filter((lid) => lid !== 'none').map(String), idStr])
+      onChange([...selectedListIds, idStr])
     }
   }
 
@@ -33,12 +33,14 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
       <Button
         variant="outline"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 min-w-[180px]"
+        className={`flex items-center gap-2 min-w-[180px] border transition-colors ${open ? 'border-[#6c43e0]' : 'border-input'} focus:outline-none focus:ring-0 ring-0 hover:border-[#6c43e0]`}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        Filtrer par liste
-        <ChevronDown className="w-4 h-4" />
+        {selectedListIds.length === 0
+          ? 'Filtrer par liste'
+          : `${selectedListIds.length} filtre${selectedListIds.length > 1 ? 's' : ''} actif${selectedListIds.length > 1 ? 's' : ''}`}
+        <ChevronDown className="w-4 h-4 ml-2 transition-transform duration-0" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
       </Button>
       {open && (
         <>
@@ -56,17 +58,15 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
             <ul className="space-y-1">
               <li
                 className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efeffb] cursor-pointer text-[#3d247a] font-normal"
-                onClick={() => {
-                  if (selectedListIds.includes('none')) {
-                    onChange(selectedListIds.filter(id => id !== 'none'))
-                  } else {
-                    onChange([...selectedListIds, 'none'])
-                  }
-                }}
+                onClick={() => toggleList('none')}
                 role="option"
                 aria-selected={selectedListIds.includes('none')}
               >
-                <Checkbox checked={selectedListIds.includes('none')} />
+                <Checkbox 
+                  checked={selectedListIds.includes('none')} 
+                  className="h-4 w-4 border border-[#6B5DE6] rounded bg-white"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
+                />
                 <span className="truncate flex-1">Aucune liste</span>
               </li>
               {lists.length === 0 && (
@@ -80,7 +80,11 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
                   role="option"
                   aria-selected={selectedListIds.map(String).includes(String(list.id))}
                 >
-                  <Checkbox checked={selectedListIds.map(String).includes(String(list.id))} />
+                  <Checkbox 
+                    checked={selectedListIds.map(String).includes(String(list.id))} 
+                    className="h-4 w-4 border border-[#6B5DE6] rounded bg-white"
+                    icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
+                  />
                   <span className="truncate flex-1">{list.nom}</span>
                 </li>
               ))}

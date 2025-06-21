@@ -93,7 +93,7 @@ export default function CampaignsPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
             </CardHeader>
@@ -104,7 +104,7 @@ export default function CampaignsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Average Open Rate</CardTitle>
             </CardHeader>
@@ -119,7 +119,7 @@ export default function CampaignsPage() {
               <p className="text-xs text-muted-foreground">Across all campaigns</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Average Click Rate</CardTitle>
             </CardHeader>
@@ -136,7 +136,7 @@ export default function CampaignsPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle>All Campaigns</CardTitle>
             <CardDescription>Manage your email marketing campaigns.</CardDescription>

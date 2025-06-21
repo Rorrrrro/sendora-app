@@ -13,7 +13,7 @@ export default function StatisticsPage() {
 
         {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -28,7 +28,7 @@ export default function StatisticsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Campagnes Actives</CardTitle>
               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -43,7 +43,7 @@ export default function StatisticsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Listes</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -58,7 +58,7 @@ export default function StatisticsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Taux d'Ouverture</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -77,7 +77,7 @@ export default function StatisticsPage() {
 
         {/* Placeholder for future statistics content */}
         <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Performance des Campagnes</CardTitle>
             </CardHeader>
@@ -87,7 +87,7 @@ export default function StatisticsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Croissance des Contacts</CardTitle>
             </CardHeader>
@@ -100,7 +100,7 @@ export default function StatisticsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Taux d'Engagement</CardTitle>
             </CardHeader>
@@ -110,7 +110,7 @@ export default function StatisticsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Répartition Géographique</CardTitle>
             </CardHeader>
@@ -120,7 +120,7 @@ export default function StatisticsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle>Appareils Utilisés</CardTitle>
             </CardHeader>

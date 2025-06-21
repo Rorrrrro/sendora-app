@@ -38,3 +38,13 @@ body {
     --radius: 0.5rem;
   }
 }
+
+[data-state='open'] .chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Checkbox cochée en #6B5DE6 */
+[data-state="checked"].peer {
+  background-color: #6B5DE6 !important;
+  border-color: #6B5DE6 !important;
+}
