@@ -35,7 +35,7 @@ Violet principal (branding) : #6c43e0
 Violet secondaire (hover): #4f32a7
 
 
-Fond du bouton : #ffffff (Blanc pur)
+Fond du bouton : #fffeff (Blanc pur)
 Texte et icône : #23272f (Gris très foncé, presque noir)
 Bordure : #e0e0e0 (Gris très clair et doux)
 Et au survol de la souris (hover) :

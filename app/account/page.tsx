@@ -299,7 +299,7 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" defaultChecked className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-[#FFFEFF] after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-[#FFFEFF] peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>
@@ -313,7 +313,7 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-[#FFFEFF] after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-[#FFFEFF] peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>
@@ -327,7 +327,7 @@ export default function AccountPage() {
                     <div className="flex items-center space-x-2">
                       <label className="relative inline-flex cursor-pointer items-center">
                         <input type="checkbox" defaultChecked className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-[#FFFEFF] after:transition-all after:content-[''] peer-checked:bg-[#6c43e0] peer-checked:after:translate-x-full peer-checked:after:border-[#FFFEFF] peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700"></div>
                       </label>
                     </div>
                   </div>

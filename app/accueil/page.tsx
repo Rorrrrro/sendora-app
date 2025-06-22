@@ -41,82 +41,48 @@ export default function AccueilPage() {
           <p className="text-muted-foreground mt-1">Voici ce qui vous attend aujourd'hui</p>
         </div>
 
-        {/* Getting Started Steps */}
-        <Card className="border-l-4 border-l-[#9D5CFF] border-y-0 border-r-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#9D5CFF]/10 text-[#9D5CFF]">
-                👣
-              </span>
-              Étapes pour démarrer
-            </CardTitle>
-            <CardDescription>Suivez ces étapes pour commencer à utiliser la plateforme</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#9D5CFF] text-white">
-                    1
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold leading-none tracking-tight flex items-center gap-2">
-                      <Upload className="h-4 w-4" /> Importez vos contacts
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Glissez un fichier .csv ou ajoutez-les manuellement.
-                    </p>
-                    <Button className="bg-[#9D5CFF] hover:bg-[#8A4AE8]" size="sm">
-                      Importer mes contacts
-                    </Button>
-                  </div>
+        {/* Getting Started Steps - version premium */}
+        <div className="relative py-12 px-2 md:px-0">
+          <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-[#f4f4fd] via-[#f8e8ff] to-[#f4f4fd] opacity-90 blur-sm" />
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-[#3d247a] mb-2 tracking-tight">Étapes pour démarrer</h2>
+              <p className="text-lg text-[#6c43e0] font-medium">Suivez ces étapes pour profiter pleinement de Sendora</p>
+            </div>
+            <div className="flex flex-col md:flex-row gap-8 items-stretch justify-between relative">
+              {/* Ligne stepper */}
+              <div className="hidden md:block absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-[#e6dbfa] via-[#9D5CFF] to-[#e6dbfa] opacity-60 z-0" style={{top:'56%'}} />
+              {/* Étape 1 */}
+              <div className="flex-1 bg-[#FFFEFF] rounded-2xl p-8 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:ring-2 hover:ring-[#e6dbfa] flex flex-col items-center text-center relative z-10 group">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#9D5CFF] to-[#6c43e0] shadow-lg group-hover:shadow-[#e6dbfa] transition-all duration-300 mb-4 border-4 border-white">
+                  <Upload className="h-8 w-8 text-white drop-shadow-lg" />
                 </div>
-                <div
-                  className="absolute right-0 top-1/2 hidden h-3 w-3 rotate-45 border-b border-r border-dashed border-[#9D5CFF]/50 md:block"
-                  style={{ width: "50px", height: "2px", transform: "translateY(-50%)" }}
-                ></div>
+                <div className="text-2xl font-bold mb-2 text-[#3d247a]">Importez vos contacts</div>
+                <div className="text-gray-500 mb-4">Glissez un fichier <span className='font-semibold text-[#6c43e0]'>.csv, .xlsx</span> ou ajoutez-les manuellement.</div>
+                <Button className="bg-gradient-to-r from-[#9D5CFF] to-[#6c43e0] hover:from-[#8A4AE8] hover:to-[#6c43e0] text-white font-semibold w-full max-w-xs shadow-md">Importer mes contacts</Button>
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#FFFEFF] px-3 py-1 rounded-full text-xs font-bold text-[#9D5CFF] shadow border border-[#e6dbfa]">Nouveau</span>
               </div>
-
-              <div className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#9D5CFF] text-white">
-                    2
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold leading-none tracking-tight flex items-center gap-2">
-                      <ListChecks className="h-4 w-4" /> Créez une liste
-                    </h3>
-                    <p className="text-sm text-muted-foreground">Classez vos contacts selon vos besoins.</p>
-                    <Button className="bg-[#9D5CFF] hover:bg-[#8A4AE8]" size="sm">
-                      Créer une liste
-                    </Button>
-                  </div>
+              {/* Étape 2 */}
+              <div className="flex-1 bg-[#FFFEFF] rounded-2xl p-8 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:ring-2 hover:ring-[#e6dbfa] flex flex-col items-center text-center relative z-10 group">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#9D5CFF] to-[#6c43e0] shadow-lg group-hover:shadow-[#e6dbfa] transition-all duration-300 mb-4 border-4 border-white">
+                  <ListChecks className="h-8 w-8 text-white drop-shadow-lg" />
                 </div>
-                <div
-                  className="absolute right-0 top-1/2 hidden h-3 w-3 rotate-45 border-b border-r border-dashed border-[#9D5CFF]/50 md:block"
-                  style={{ width: "50px", height: "2px", transform: "translateY(-50%)" }}
-                ></div>
+                <div className="text-2xl font-bold mb-2 text-[#3d247a]">Créez une liste</div>
+                <div className="text-gray-500 mb-4">Classez vos contacts selon vos besoins.</div>
+                <Button className="bg-gradient-to-r from-[#9D5CFF] to-[#6c43e0] hover:from-[#8A4AE8] hover:to-[#6c43e0] text-white font-semibold w-full max-w-xs shadow-md">Créer une liste</Button>
               </div>
-
-              <div>
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#9D5CFF] text-white">
-                    3
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold leading-none tracking-tight flex items-center gap-2">
-                      <Send className="h-4 w-4" /> Lancez une campagne
-                    </h3>
-                    <p className="text-sm text-muted-foreground">Rédigez, ciblez et envoyez !</p>
-                    <Button className="bg-[#9D5CFF] hover:bg-[#8A4AE8]" size="sm">
-                      Créer une campagne
-                    </Button>
-                  </div>
+              {/* Étape 3 */}
+              <div className="flex-1 bg-[#FFFEFF] rounded-2xl p-8 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:ring-2 hover:ring-[#e6dbfa] flex flex-col items-center text-center relative z-10 group">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#9D5CFF] to-[#6c43e0] shadow-lg group-hover:shadow-[#e6dbfa] transition-all duration-300 mb-4 border-4 border-white">
+                  <Send className="h-8 w-8 text-white drop-shadow-lg" />
                 </div>
+                <div className="text-2xl font-bold mb-2 text-[#3d247a]">Lancez une campagne</div>
+                <div className="text-gray-500 mb-4">Rédigez, ciblez et envoyez !</div>
+                <Button className="bg-gradient-to-r from-[#9D5CFF] to-[#6c43e0] hover:from-[#8A4AE8] hover:to-[#6c43e0] text-white font-semibold w-full max-w-xs shadow-md">Créer une campagne</Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Recent Activity */}
         <div className="grid gap-4 md:grid-cols-2">

@@ -117,7 +117,7 @@ export default function ListesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Listes</h1>
-            <p className="text-muted-foreground mt-3">Créez, modifiez et organisez facilement vos listes pour des interactions ciblées et une gestion optimale</p>
+            <p className="text-muted-foreground mt-3">Créez, modifiez et organisez facilement vos listes pour des interactions ciblées et une gestion optimale.</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={() => setCreateSidebarOpen(true)} className="bg-[#6c43e0] border-[#6c43e0] text-white font-semibold hover:bg-[#4f32a7] hover:border-[#4f32a7] transition">
@@ -130,11 +130,13 @@ export default function ListesPage() {
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>
-              {loading ? (
-                <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
-              ) : (
-                <span className="text-lg font-bold text-foreground">Vous avez {listes.length} liste{listes.length > 1 ? "s" : ""} dans votre base de données</span>
-              )}
+              <span className="text-lg font-bold text-foreground">
+                {loading ? (
+                  <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
+                ) : (
+                  `Vous avez ${listes.length} liste${listes.length > 1 ? "s" : ""}`
+                )}
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -193,7 +195,7 @@ export default function ListesPage() {
                           <td className="p-4 align-middle text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[#efeffb]">
+                                <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
                                   <MoreHorizontal className="h-4 w-4" />
                                   <span className="sr-only">Ouvrir le menu</span>
                                 </Button>

@@ -280,7 +280,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Sidebar avec bordures très arrondies à gauche */}
-      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
+      <div className="fixed right-0 top-0 h-screen w-96 bg-[#FFFEFF] shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
         {/* Header - Avec fond complet pour éviter la transparence */}
         <div className="bg-[#6c43e0] py-6 text-center relative z-10">
           <h2 className="text-xl font-bold text-white">Créer un contact</h2>
@@ -290,7 +290,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         <form
           id="contact-form"
           onSubmit={handleSubmit}
-          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-white"
+          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-[#FFFEFF]"
         >
           <div className="space-y-7">
             <div>
@@ -413,11 +413,11 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
           </div>
         </form>
 
-        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
+        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-[#FFFEFF]">
           <Button
             type="button"
             onClick={onClose}
-            className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+            className="bg-[#FFFEFF] border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
           >
             Retour
           </Button>

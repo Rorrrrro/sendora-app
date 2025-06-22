@@ -101,7 +101,7 @@ export default function SignupPage() {
       {/* Left side - Logo and branding */}
       <div className="hidden w-1/2 bg-primary/10 lg:block">
         <div className="flex h-full flex-col items-center justify-center p-12">
-          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-md">
+          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-[#FFFEFF] shadow-md">
             <img src="/Sendora.png" alt="Sendora Logo" className="h-24 w-auto" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900">Sendora</h1>
@@ -127,7 +127,7 @@ export default function SignupPage() {
             <p className="mt-2 text-gray-600">Commencez à utiliser Sendora gratuitement</p>
           </div>
 
-          <div className="rounded-xl bg-white p-8 shadow-lg">
+          <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
             <form className="space-y-6" onSubmit={handleSubmit} id="signup-form">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -206,7 +206,7 @@ export default function SignupPage() {
                   <div className="w-full border-t border-gray-300" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-2 text-gray-500">Ou continuer avec</span>
+                  <span className="bg-[#FFFEFF] px-2 text-gray-500">Ou continuer avec</span>
                 </div>
               </div>
 
@@ -214,7 +214,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   id="google-signup"
-                  className="flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="flex w-full justify-center rounded-md border border-gray-300 bg-[#FFFEFF] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="mr-2" height="18" viewBox="0 0 24 24" width="18">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

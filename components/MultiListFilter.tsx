@@ -50,7 +50,7 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute z-20 mt-2 w-64 bg-white border rounded-lg shadow-lg p-2 max-h-72 overflow-auto left-1/2 -translate-x-1/2">
+          <div className="absolute z-20 mt-2 w-64 bg-[#FFFEFF] border rounded-lg shadow-lg p-2 max-h-72 overflow-auto left-1/2 -translate-x-1/2">
             <div className="flex justify-between items-center mb-2">
               <span className="font-semibold text-sm pl-2">Vos listes</span>
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-[#3d247a] hover:bg-[#efeffb] hover:text-[#3d247a] text-xs px-2 py-0 font-normal">Tout désélectionner</Button>
@@ -64,7 +64,7 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
               >
                 <Checkbox 
                   checked={selectedListIds.includes('none')} 
-                  className="h-4 w-4 border border-[#6B5DE6] rounded bg-white"
+                  className="h-4 w-4 border border-[#6B5DE6] rounded bg-[#FFFEFF]"
                   icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
                 />
                 <span className="truncate flex-1">Aucune liste</span>
@@ -82,7 +82,7 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
                 >
                   <Checkbox 
                     checked={selectedListIds.map(String).includes(String(list.id))} 
-                    className="h-4 w-4 border border-[#6B5DE6] rounded bg-white"
+                    className="h-4 w-4 border border-[#6B5DE6] rounded bg-[#FFFEFF]"
                     icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
                   />
                   <span className="truncate flex-1">{list.nom}</span>

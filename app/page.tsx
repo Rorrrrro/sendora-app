@@ -26,7 +26,7 @@ export default function Home() {
               </a>
             </nav>
             <div className="flex items-center space-x-4">
-              <Link href="/login" className="px-4 py-2 rounded-full text-white hover:bg-white/10 transition-colors">
+              <Link href="/login" className="px-4 py-2 rounded-full text-white hover:bg-[#FFFEFF]/10 transition-colors">
                 Connexion
               </Link>
               <Link
@@ -43,7 +43,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="bg-gray-900 text-white py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
-          <div className="inline-flex items-center bg-white/10 text-sm px-4 py-2 rounded-full mb-8">
+          <div className="inline-flex items-center bg-[#FFFEFF]/10 text-sm px-4 py-2 rounded-full mb-8">
             <span className="bg-primary/20 text-primary px-2 py-1 rounded-full mr-2">Nouveau</span>
             <span>Intégration avec l&apos;IA pour la génération de contenu</span>
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -67,7 +67,7 @@ export default function Home() {
             </Link>
             <a
               href="#demo"
-              className="px-6 py-3 rounded-md bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+              className="px-6 py-3 rounded-md bg-[#FFFEFF]/10 text-white font-medium hover:bg-[#FFFEFF]/20 transition-colors"
             >
               Contacter l&apos;équipe commerciale
             </a>
@@ -96,7 +96,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 md:py-24 bg-white">
+      <section id="features" className="py-16 md:py-24 bg-[#FFFEFF]">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Une solution complète pour votre email marketing</h2>
@@ -151,7 +151,7 @@ export default function Home() {
       </section>
 
       {/* Solutions Section */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-16 md:py-24 bg-[#FFFEFF]">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">Des solutions adaptées à vos besoins</h2>
 
@@ -404,7 +404,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center mb-4">
-                <div className="mr-2 h-8 w-8 rounded bg-white/10 flex items-center justify-center">
+                <div className="mr-2 h-8 w-8 rounded bg-[#FFFEFF]/10 flex items-center justify-center">
                   <span className="text-xl font-bold text-primary">S</span>
                 </div>
                 <span className="text-xl font-bold">Sendora</span>

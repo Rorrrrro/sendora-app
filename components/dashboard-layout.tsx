@@ -159,7 +159,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top navbar */}
-        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 z-10 lg:pl-64">
+        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-[#FFFEFF] px-4 z-10 lg:pl-64">
           <div className="flex items-center">
             <button
               className="mr-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#9D5CFF] lg:hidden"
@@ -182,7 +182,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {/* Bleu */}
               <rect y="30" width="80" height="20" fill="#1D3A86" />
               {/* Blanc */}
-              <rect y="30" x="80" width="80" height="20" fill="#FFFFFF" />
+              <rect y="30" x="80" width="80" height="20" fill="#FFFEFF" />
               {/* Rouge */}
               <rect y="30" x="160" width="80" height="20" fill="#D83A28" />
               {/* Texte en dessous */}
@@ -200,7 +200,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </text>
             </svg>
 
-            <button className="rounded-full bg-white p-1 text-gray-400 hover:text-[#9D5CFF] focus:outline-none focus:ring-2 focus:ring-[#9D5CFF] focus:ring-offset-2">
+            <button className="rounded-full bg-[#FFFEFF] p-1 text-gray-400 hover:text-[#9D5CFF] focus:outline-none focus:ring-2 focus:ring-[#9D5CFF] focus:ring-offset-2">
               <Bell className="h-6 w-6" />
             </button>
 
@@ -218,7 +218,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <ChevronDown className="h-4 w-4 text-gray-600 group-data-[state=open]:rotate-180" />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl bg-white shadow-lg border p-1 min-w-[180px]">
+              <DropdownMenuContent align="end" className="rounded-xl bg-[#FFFEFF] shadow-lg border p-1 min-w-[180px]">
                 <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
                   <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
                     <User className="mr-2 h-5 w-5 text-[#3d247a]" />

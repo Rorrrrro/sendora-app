@@ -112,7 +112,7 @@ function ContactsTable({
                   variant="outline"
                   size="sm"
                   onClick={onBulkAddToList}
-                  className="h-8 bg-white text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
+                  className="h-8 bg-[#FFFEFF] text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Ajouter à une liste
@@ -121,7 +121,7 @@ function ContactsTable({
                   variant="outline"
                   size="sm"
                   onClick={onBulkRemoveFromList}
-                  className="h-8 bg-white text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
+                  className="h-8 bg-[#FFFEFF] text-neutral-800 border border-neutral-200 rounded-md hover:bg-neutral-50 hover:text-neutral-900 shadow-none font-medium"
                 >
                   <UserMinus className="mr-2 h-4 w-4" />
                   Enlever de la liste
@@ -510,7 +510,7 @@ export default function ContactsPage() {
           <div className="flex items-center gap-4">
             <Button
               onClick={() => setCreateSidebarOpen(true)}
-              className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+              className="bg-[#FFFEFF] border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
             >
               <Plus className="mr-2 h-4 w-4 text-[#23272f]" />
               Créer un contact
@@ -532,13 +532,9 @@ export default function ContactsPage() {
                 {!isFirstFetchDone ? (
                   <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
                 ) : searchTerm || selectedListIds.length > 0 ? (
-                  `${filteredContacts.length} contact${
-                    filteredContacts.length > 1 ? "s" : ""
-                  } trouvé${filteredContacts.length > 1 ? "s" : ""}`
+                  `${filteredContacts.length} contact${filteredContacts.length > 1 ? "s" : ""} trouvé${filteredContacts.length > 1 ? "s" : ""}`
                 ) : (
-                  `Vous avez ${contacts.length} contact${
-                    contacts.length > 1 ? "s" : ""
-                  } dans votre base de données`
+                  `Vous avez ${contacts.length} contact${contacts.length > 1 ? "s" : ""}`
                 )}
               </span>
             </div>
@@ -645,7 +641,7 @@ export default function ContactsPage() {
                 </div>
                 <AlertDialogFooter className="mt-6">
                   <AlertDialogCancel
-                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                    className="bg-[#FFFEFF] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
                   >
                     Annuler
                   </AlertDialogCancel>
@@ -699,7 +695,7 @@ export default function ContactsPage() {
                 </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel
-                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                    className="bg-[#FFFEFF] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
                   >
                     Annuler
                   </AlertDialogCancel>
@@ -753,7 +749,7 @@ export default function ContactsPage() {
                               aria-hidden="true"
                             />
                             <div
-                              className="absolute z-40 mt-10 w-full bg-white border rounded-lg shadow-lg p-0 max-h-60 overflow-auto left-0"
+                              className="absolute z-40 mt-10 w-full bg-[#FFFEFF] border rounded-lg shadow-lg p-0 max-h-60 overflow-auto left-0"
                               style={{ minWidth: triggerRef.current ? triggerRef.current.offsetWidth : undefined }}
                             >
                               <div className="flex flex-col">
@@ -792,7 +788,7 @@ export default function ContactsPage() {
                 </div>
                 <AlertDialogFooter className="mt-6">
                   <AlertDialogCancel
-                    className="bg-[#ffffff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                    className="bg-[#FFFEFF] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
                   >
                     Annuler
                   </AlertDialogCancel>

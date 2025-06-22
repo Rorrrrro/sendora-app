@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
       {/* Left side - Logo and branding */}
       <div className="hidden w-1/2 bg-primary/10 lg:block">
         <div className="flex h-full flex-col items-center justify-center p-12">
-          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-md">
+          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-[#FFFEFF] shadow-md">
             <img src="/Sendora.png" alt="Sendora Logo" className="h-24 w-auto" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900">Sendora</h1>
@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
             <p className="mt-2 text-gray-600">Entrez votre adresse email pour recevoir un lien de réinitialisation</p>
           </div>
 
-          <div className="rounded-xl bg-white p-8 shadow-lg">
+          <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
             {!submitted ? (
               <form className="space-y-6" onSubmit={handleSubmit} id="reset-password-form">
                 <div>

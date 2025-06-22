@@ -56,7 +56,7 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
   return (
     <div className="fixed inset-0 z-50 top-0 left-0 right-0 bottom-0">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
+      <div className="fixed right-0 top-0 h-screen w-96 bg-[#FFFEFF] shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
         <div className="bg-[#6c43e0] py-6 text-center relative z-10 flex justify-center items-center">
           <h2 className="text-xl font-bold text-white">Créer une liste</h2>
         </div>
@@ -64,7 +64,7 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
         <form
           id="list-form"
           onSubmit={handleSubmit}
-          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-white"
+          className="flex-1 flex flex-col px-8 py-4 space-y-7 overflow-y-auto bg-[#FFFEFF]"
         >
           <div className="space-y-7">
             <div>
@@ -97,11 +97,11 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
           </div>
         </form>
 
-        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-white">
+        <div className="flex justify-center gap-14 px-8 py-6 border-t bg-[#FFFEFF]">
           <Button
             type="button"
             onClick={onClose}
-            className="bg-white border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
+            className="bg-[#FFFEFF] border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
           >
             Annuler
           </Button>
