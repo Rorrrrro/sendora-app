@@ -396,7 +396,7 @@ export default function ImportContactsPage() {
         <div className="max-w-4xl mx-auto mb-8 flex flex-row items-start justify-between">
           <div className="flex flex-col">
             <h1 className="text-3xl font-bold tracking-tight">Importer des contacts depuis un fichier</h1>
-            <p className="text-muted-foreground mt-3">Téléversez un fichier CSV contenant vos contacts et leurs informations. Idéal pour importer un grand nombre de contacts.</p>
+            <p className="text-muted-foreground mt-3">Téléversez un fichier CSV ou Excel contenant vos contacts et leurs informations. Idéal pour importer un grand nombre de contacts.</p>
           </div>
           <button
             onClick={() => router.push('/contacts')}

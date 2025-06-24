@@ -13,9 +13,45 @@ import { AppLayout } from "@/components/dashboard-layout"
 import { useUser } from "@/contexts/user-context"
 import { createBrowserClient } from "@/lib/supabase"
 import { Eye, EyeOff } from "lucide-react"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+
+// Palette de couleurs pastel claires pour les avatars
+const avatarColors = [
+  '#BFD7FF', // bleu pastel
+  '#C8F7DC', // vert pastel
+  '#FFD6E0', // rose pastel
+  '#FDF6B2', // jaune pastel
+  '#E2D6FF', // violet pastel
+  '#FFE5B4', // pêche pastel
+  '#D1F2EB', // turquoise pastel
+  '#F9D5FF', // lilas pastel
+  '#FFF2CC', // crème pastel
+  '#D6F5D6'  // vert menthe pastel
+];
+
+const avatarColorNames = [
+  'Bleu',
+  'Vert',
+  'Rose',
+  'Jaune',
+  'Violet',
+  'Pêche',
+  'Turquoise',
+  'Lilas',
+  'Crème',
+  'Menthe'
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
 
 export default function AccountPage() {
-  const { user, refreshUserData, isLoading } = useUser()
+  const { user, refreshUserData, isLoading, customAvatarColor, setCustomAvatarColor } = useUser()
   const supabase = createBrowserClient()
   const [formData, setFormData] = useState({
     prenom: "",
@@ -148,18 +184,51 @@ export default function AccountPage() {
                 <CardContent className="space-y-6">
                   <div className="flex flex-col items-center space-y-2 sm:flex-row sm:space-x-4 sm:space-y-0">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src="/placeholder.svg?height=96&width=96" alt="User" />
-                      <AvatarFallback>
-                        {!isLoading && user ? `${user.prenom.charAt(0)}${user.nom.charAt(0)}` : "..."}
+                      <AvatarFallback style={user ? { background: customAvatarColor || getAvatarColor(`${user.prenom || ''}${user.nom || ''}`), color: 'white', fontWeight: 700, fontSize: 36 } : {}}>
+                        {!isLoading && user ? `${user.prenom?.charAt(0).toUpperCase() || ''}${user.nom?.charAt(0).toUpperCase() || ''}` : "..."}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col space-y-2">
-                      <Button variant="outline" size="sm" type="button">
-                        Changer l'avatar
-                      </Button>
-                      <Button variant="ghost" size="sm" className="hover:opacity-80" style={{ color: '#d21c3c' }} type="button">
-                        Supprimer l'avatar
-                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" type="button">
+                            Changer l'avatar
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent side="right" align="center" sideOffset={0} className="w-[800px] p-4">
+                          <div className="font-semibold mb-2">Choisissez une couleur :</div>
+                          <div className="grid grid-cols-5 gap-4">
+                            {avatarColors.map((color, idx) => (
+                              <button
+                                key={color}
+                                type="button"
+                                className="flex items-center gap-2 px-2 py-1 rounded transition hover:bg-[#f4f4fd]"
+                                onClick={() => setCustomAvatarColor(color)}
+                              >
+                                <span className="inline-block w-6 h-6 rounded-full border border-gray-200" style={{ background: color }}></span>
+                                <span className="text-sm">{avatarColorNames[idx]}</span>
+                                {customAvatarColor === color && (
+                                  <span className="ml-auto text-xs text-[#6c43e0] font-bold">✓</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="mt-3 text-sm font-semibold underline text-[#6c43e0] hover:text-[#4f32a7]"
+                            onClick={() => {
+                              let availableColors = avatarColors;
+                              if (customAvatarColor) {
+                                availableColors = avatarColors.filter(c => c !== customAvatarColor);
+                              }
+                              const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+                              setCustomAvatarColor(randomColor);
+                            }}
+                          >
+                            Couleur aléatoire
+                          </button>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
 

@@ -143,7 +143,7 @@ export default function ResetPasswordPage() {
             )}
 
             <div className="mt-6 text-center text-sm">
-              <Link href="/login" className="font-medium text-primary hover:text-primary/80">
+              <Link href="/login" className="underline text-[#6c43e0] hover:text-[#4f32a7] font-semibold text-sm">
                 Retour à la page de connexion
               </Link>
             </div>

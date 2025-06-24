@@ -671,7 +671,7 @@ export default function ContactsPage() {
                       <div className="w-full flex flex-col items-start gap-2">
                         <button
                           type="button"
-                          className="mb-2 text-sm font-medium text-primary underline"
+                          className="mb-2 text-sm font-semibold underline text-[#6c43e0] hover:text-[#4f32a7]"
                           onClick={handleToggleAllLists}
                         >
                           {selectedListsToRemove.length === removableLists.length ? "Tout désélectionner" : "Tout sélectionner"}

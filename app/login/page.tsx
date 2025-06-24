@@ -197,8 +197,8 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-sm">
-                  <Link href="/reset-password" className="font-medium text-primary hover:text-primary/80">
-                    Mot de passe oublié?
+                  <Link href="/reset-password" className="underline text-[#6c43e0] hover:text-[#4f32a7] font-semibold text-sm">
+                    Mot de passe oublié ?
                   </Link>
                 </div>
               </div>
@@ -249,8 +249,8 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center text-sm">
               <span className="text-gray-600">Vous n&apos;avez pas de compte?</span>{" "}
-              <Link href="/signup" className="font-medium text-primary hover:text-primary/80">
-                S&apos;inscrire
+              <Link href="/signup" className="underline text-[#6c43e0] hover:text-[#4f32a7] font-semibold text-sm">
+                S'inscrire
               </Link>
             </div>
           </div>

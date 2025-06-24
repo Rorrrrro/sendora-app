@@ -14,6 +14,7 @@ import {
 import { AppLayout } from "@/components/dashboard-layout"
 import React, { useState } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useRouter } from 'next/navigation'
 
 const statusConfig = {
   Brouillon: {
@@ -125,6 +126,7 @@ export default function CampaignsPage() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
+  const router = useRouter();
   const rowsPerPage = 10;
   const totalCampaigns = campaigns.length;
   const totalPages = Math.max(1, Math.ceil(totalCampaigns / rowsPerPage));
@@ -140,7 +142,12 @@ export default function CampaignsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Campagnes</h1>
             <p className="text-muted-foreground mt-3">Créez et gérez vos campagnes email.</p>
           </div>
-          <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold shadow-md"> <Plus className="mr-2 h-4 w-4" /> Créer une campagne</Button>
+          <Button
+            className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold shadow-md"
+            onClick={() => router.push('/campaigns/create')}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Créer une campagne
+          </Button>
         </div>
 
         <Card className="border-none shadow-sm bg-[#FFFEFF]">

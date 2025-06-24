@@ -16,10 +16,10 @@ import {
   Home,
   Building,
   ChevronDown,
-  User,
   CreditCard,
   Settings,
   LogOut,
+  Send,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useUser } from "@/contexts/user-context"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface NavItem {
   title: string
@@ -55,7 +56,7 @@ const navItems: NavItem[] = [
   {
     title: "Campagnes",
     href: "/campaigns",
-    icon: Mail,
+    icon: Send,
   },
   {
     title: "Statistiques",
@@ -64,11 +65,22 @@ const navItems: NavItem[] = [
   },
 ]
 
+// Fonction utilitaire pour retrouver la couleur d'avatar personnalisée (localStorage)
+function getStoredAvatarColor(user: any) {
+  if (!user) return null;
+  try {
+    const key = `avatarColor_${user.prenom || ''}_${user.nom || ''}`;
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, signOut, isLoading } = useUser()
+  const { user, signOut, isLoading, customAvatarColor } = useUser()
 
   const handleSignOut = async () => {
     try {
@@ -221,7 +233,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="end" className="rounded-xl bg-[#FFFEFF] shadow-lg border p-1 min-w-[180px]">
                 <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
                   <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
-                    <User className="mr-2 h-5 w-5 text-[#3d247a]" />
+                    <Avatar className="-ml-1 mr-1 h-7 w-7">
+                      <AvatarFallback style={user ? { background: customAvatarColor || '#FFD6D6', color: 'white', fontWeight: 700, fontSize: 15 } : {}}>
+                        {!isLoading && user ? `${user.prenom?.charAt(0).toUpperCase() || ''}${user.nom?.charAt(0).toUpperCase() || ''}` : "..."}
+                      </AvatarFallback>
+                    </Avatar>
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
@@ -232,12 +248,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
-                  <Link href="/account" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
-                    <Settings className="mr-2 h-5 w-5 text-[#3d247a]" />
-                    Paramètres
+                  <Link href="/Utilisateurs" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <Users className="mr-2 h-5 w-5 text-[#3d247a]" />
+                    Utilisateurs
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuSeparator className="my-1 bg-[#efeffb]" />
                 <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]" onClick={handleSignOut}>
                   <div className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
                     <LogOut className="mr-2 h-5 w-5 text-[#3d247a]" />

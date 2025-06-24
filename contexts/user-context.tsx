@@ -19,6 +19,8 @@ type UserContextType = {
   isLoading: boolean
   refreshUserData: () => Promise<void>
   signOut: () => Promise<void>
+  customAvatarColor: string | null
+  setCustomAvatarColor: (color: string | null) => void
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -26,8 +28,31 @@ const UserContext = createContext<UserContextType | undefined>(undefined)
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [customAvatarColor, setCustomAvatarColorState] = useState<string | null>(null)
   const supabase = createBrowserClient()
   const router = useRouter()
+
+  // Charge la couleur personnalisée depuis localStorage au login
+  useEffect(() => {
+    if (user) {
+      const key = `avatarColor_${user.prenom || ''}_${user.nom || ''}`
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+      setCustomAvatarColorState(stored)
+    }
+  }, [user])
+
+  // Fonction pour changer la couleur et la stocker dans localStorage
+  const setCustomAvatarColor = (color: string | null) => {
+    if (user) {
+      const key = `avatarColor_${user.prenom || ''}_${user.nom || ''}`
+      if (color) {
+        localStorage.setItem(key, color)
+      } else {
+        localStorage.removeItem(key)
+      }
+      setCustomAvatarColorState(color)
+    }
+  }
 
   const refreshUserData = async () => {
     try {
@@ -109,7 +134,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, setUser, isLoading, refreshUserData, signOut }}>
+    <UserContext.Provider value={{ user, setUser, isLoading, refreshUserData, signOut, customAvatarColor, setCustomAvatarColor }}>
       {children}
     </UserContext.Provider>
   )
