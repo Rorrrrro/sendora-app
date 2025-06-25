@@ -134,7 +134,7 @@ export default function ResetPasswordPage() {
                       setEmail("")
                       setSubmitted(false)
                     }}
-                    className="text-sm font-medium text-primary hover:text-primary/80"
+                    className="text-sm font-medium text-[#6c43e0] hover:text-[#4f32a7] transition-colors"
                   >
                     Essayer une autre adresse email
                   </button>

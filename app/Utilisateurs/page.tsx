@@ -16,11 +16,12 @@ import { useUser } from "@/contexts/user-context"
 import { createBrowserClient } from "@/lib/supabase"
 import Link from "next/link"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 interface User {
   id: string
   email: string
-  status: "en_attente" | "acceptee" | "expiree" | "actif"
+  status: "En attente" | "Acceptée" | "Expirée" | "actif" | "Actif" | string
   marketing_platform: "Propriétaire" | "Éditeur" | "Lecture" | "Aucun accès"
   compte_parent_id: string | null
 }
@@ -46,52 +47,44 @@ export default function UsersPage() {
         return;
       }
 
-      // 2. Récupérer toutes les invitations
+      // 2. Récupérer toutes les invitations liées au compte parent
       const { data: invitations, error: invitationsError } = await supabase
         .from("Invitations")
-        .select("*");
+        .select("*")
+        .eq("compte_parent_id", user.id);
 
       if (invitationsError) {
         console.error("Erreur lors de la récupération des invitations:", invitationsError);
         return;
       }
 
-      // Traiter les utilisateurs
-      const formattedUsers = utilisateurs.map((u: any): User => {
-        // Cas 1 - Utilisateur principal (compte_parent_id est NULL)
-        if (!u.compte_parent_id) {
-          return {
-            id: u.id,
-            email: u.email,
-            status: "actif",
-            marketing_platform: u.role_marketing,
-            compte_parent_id: null
-          };
-        }
-        
-        // Cas 2 - Utilisateur lié
-        // Chercher le statut dans la table Invitations
-        const invitation = invitations.find(
-          (inv: any) => inv.email_invite === u.email
-        );
+      // Récupère tous les emails déjà utilisateurs
+      const utilisateursEmails = utilisateurs.map((u: any) => u.email);
 
-        return {
-          id: u.id,
-          email: u.email,
-          status: invitation ? invitation.statut : "en_attente",
-          marketing_platform: u.role_marketing,
-          compte_parent_id: u.compte_parent_id
-        };
-      });
+      // Invitations (affiche uniquement si l'utilisateur n'existe pas encore)
+      const invitationUsers = invitations
+        .filter((inv: any) => !utilisateursEmails.includes(inv.email_invite))
+        .map((inv: any) => ({
+          id: inv.id,
+          email: inv.email_invite,
+          status: inv.statut || "En attente",
+          marketing_platform: inv.role_marketing,
+          compte_parent_id: inv.compte_parent_id
+        }));
 
-      // Trier pour mettre l'utilisateur principal en premier
-      const sortedUsers = formattedUsers.sort((a, b) => {
-        if (a.compte_parent_id === null) return -1;
-        if (b.compte_parent_id === null) return 1;
-        return 0;
-      });
+      // Utilisateurs existants (affichés comme 'Actif')
+      const formattedUsers = utilisateurs.map((u: any): User => ({
+        id: u.id,
+        email: u.email,
+        status: "actif",
+        marketing_platform: u.role_marketing,
+        compte_parent_id: u.compte_parent_id || null
+      }));
 
-      setUsers(sortedUsers);
+      setUsers([
+        ...formattedUsers,
+        ...invitationUsers
+      ]);
       setLoading(false);
     };
 
@@ -101,6 +94,37 @@ export default function UsersPage() {
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Ajoute la fonction de suppression
+  const handleDelete = async (user: User) => {
+    if (user.status === "actif" && user.compte_parent_id === null) {
+      toast.error("Impossible de supprimer le propriétaire.");
+      return;
+    }
+    if (user.status === "actif") {
+      // Utilisateur enfant : confirmation
+      if (!window.confirm(`Voulez-vous vraiment supprimer l'utilisateur ${user.email} ? Cette action est irréversible.`)) {
+        return;
+      }
+      const { error } = await supabase.from("Utilisateurs").delete().eq("id", user.id);
+      if (error) {
+        toast.error("Erreur lors de la suppression de l'utilisateur.");
+      } else {
+        toast.success("Utilisateur supprimé.");
+        // Rafraîchir la liste
+        window.location.reload();
+      }
+    } else {
+      // Invitation : suppression directe
+      const { error } = await supabase.from("Invitations").delete().eq("id", user.id);
+      if (error) {
+        toast.error("Erreur lors de la suppression de l'invitation.");
+      } else {
+        toast.success("Invitation supprimée.");
+        window.location.reload();
+      }
+    }
+  };
 
   return (
     <AppLayout>
@@ -189,20 +213,29 @@ export default function UsersPage() {
 
                       <div className="flex flex-col gap-2.5 w-[120px]">
                         <span className="text-xs text-muted-foreground font-medium">STATUT</span>
-                        <span className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium w-fit ${
-                          user.status === 'actif' 
-                            ? 'bg-green-100 text-green-800'
-                            : user.status === 'en_attente'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : user.status === 'acceptee'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {user.status === 'actif' ? 'Actif' 
-                           : user.status === 'en_attente' ? 'En attente'
-                           : user.status === 'acceptee' ? 'Acceptée'
-                           : 'Expirée'}
-                        </span>
+                        {/* Affichage robuste du badge de statut */}
+                        {(() => {
+                          let color = 'bg-gray-100 text-gray-800';
+                          let label = user.status;
+                          if (user.status === 'actif') {
+                            color = 'bg-green-100 text-green-800';
+                            label = 'Actif';
+                          } else if (user.status === 'En attente') {
+                            color = 'bg-yellow-100 text-yellow-800';
+                            label = 'En attente';
+                          } else if (user.status === 'Acceptée') {
+                            color = 'bg-blue-100 text-blue-800';
+                            label = 'Acceptée';
+                          } else if (user.status === 'Expirée') {
+                            color = 'bg-red-100 text-red-800';
+                            label = 'Expirée';
+                          }
+                          return (
+                            <span className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium w-fit ${color}`}>
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex flex-col gap-2.5 w-[160px]">
@@ -222,10 +255,13 @@ export default function UsersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition cursor-pointer"
+                              className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
+                              asChild
                             >
-                              <Shield className="h-4 w-4" />
-                              Gérer les accès
+                              <Link href={`/Utilisateurs/gerer-acces?id=${user.id}`} prefetch={false}>
+                                <Shield className="h-4 w-4" />
+                                Gérer les accès
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <div className="w-full py-1">
@@ -233,6 +269,8 @@ export default function UsersPage() {
                                 variant="destructive"
                                 size="sm"
                                 className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] text-[16px] transition focus:outline-none focus:ring-0"
+                                onClick={() => handleDelete(user)}
+                                disabled={user.status === 'actif' && user.compte_parent_id === null}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Supprimer
@@ -249,6 +287,15 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+      <style jsx global>{`
+        .menu-action-item:hover {
+          background-color: #efeffb !important;
+          color: #3d247a !important;
+        }
+        .menu-action-item:hover svg {
+          color: #3d247a !important;
+        }
+      `}</style>
     </AppLayout>
   )
 } 

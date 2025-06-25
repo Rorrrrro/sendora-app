@@ -17,13 +17,14 @@ type Role = "Lecture" | "Éditeur" | "Aucun accès"
 
 export default function InviteUserPage() {
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<Role>("Lecture")
+  const [role, setRole] = useState<Role>("Éditeur")
   const [isLoading, setIsLoading] = useState(false)
   const [emailError, setEmailError] = useState("")
   const [triedSubmit, setTriedSubmit] = useState(false)
   const { user } = useUser()
   const supabase = createBrowserClient()
   const router = useRouter()
+  const [mailStatus, setMailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle")
 
   function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -43,21 +44,42 @@ export default function InviteUserPage() {
       return
     }
     setIsLoading(true)
-    const { error: supabaseError } = await supabase.from("Invitations").insert({
-      email_invite: email,
-      compte_parent_id: user.id,
-      statut: "en_attente",
-      role_marketing: role,
-      token: crypto.randomUUID(),
-    })
-    setIsLoading(false)
-    if (supabaseError) {
-      setEmailError("Erreur lors de l'envoi de l'invitation")
-    } else {
+    setMailStatus("idle")
+    setMailStatus("sending")
+    try {
+      // Récupère le JWT de l'utilisateur connecté
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send_invitation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            email,
+            compte_parent_id: user.id,
+            role_marketing: role,
+          }),
+        }
+      )
+      if (!response.ok) throw new Error()
+      setMailStatus("sent")
       setEmail("")
       setEmailError("")
       toast.success("Invitation envoyée avec succès !")
-      router.push("/Utilisateurs")
+      setTimeout(() => {
+        setMailStatus("idle")
+        router.push("/Utilisateurs")
+      }, 2000)
+    } catch {
+      setMailStatus("error")
+      setEmailError("Erreur lors de l'envoi de l'email d'invitation")
+      toast.error("Erreur lors de l'envoi de l'email d'invitation")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -88,7 +110,7 @@ export default function InviteUserPage() {
           <CardHeader>
             <CardTitle>Détails de l'invitation</CardTitle>
             <CardDescription>
-              L'utilisateur recevra un lien pour rejoindre votre espace de travail.
+              L'utilisateur recevra un lien valable 24h pour rejoindre votre espace de travail.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -109,9 +131,6 @@ export default function InviteUserPage() {
                     autoComplete="off"
                     onInvalid={e => e.preventDefault()}
                   />
-                  {emailError && (
-                    <p className="text-sm text-red-600 mt-1">{emailError}</p>
-                  )}
                 </div>
               </div>
 
@@ -120,7 +139,8 @@ export default function InviteUserPage() {
                 <RadioGroup value={role} onValueChange={(value: Role) => setRole(value)} className="gap-4 pt-2">
                   <label
                     htmlFor="editeur"
-                    className={`flex p-4 rounded-2xl border transition-all cursor-pointer w-full ${role === "Éditeur" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1]"}`}
+                    className={`flex p-5 rounded-2xl border transition-all cursor-pointer w-full items-center ${role === "Éditeur" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1] hover:border-[#bdbdbd]"}`}
+                    style={{ minHeight: 72 }}
                   >
                     <RadioGroupItem value="Éditeur" id="editeur" className="mr-4 mt-1" />
                     <div className="font-normal w-full">
@@ -132,19 +152,21 @@ export default function InviteUserPage() {
                   </label>
                   <label
                     htmlFor="lecture"
-                    className={`flex p-4 rounded-2xl border transition-all cursor-pointer w-full ${role === "Lecture" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1]"}`}
+                    className={`flex p-5 rounded-2xl border transition-all cursor-pointer w-full items-center ${role === "Lecture" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1] hover:border-[#bdbdbd]"}`}
+                    style={{ minHeight: 72 }}
                   >
                     <RadioGroupItem value="Lecture" id="lecture" className="mr-4 mt-1" />
                     <div className="font-normal w-full">
                       <p className="font-semibold">Lecture</p>
                       <p className="text-sm text-muted-foreground">
-                        L'utilisateur peut voir les campagnes et les statistiques, mais ne peut rien modifier.
+                        L'utilisateur peut consulter toutes les campagnes, listes, contacts et statistiques, sans pouvoir les modifier.
                       </p>
                     </div>
                   </label>
                   <label
                     htmlFor="aucun"
-                    className={`flex p-4 rounded-2xl border transition-all cursor-pointer w-full ${role === "Aucun accès" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1]"}`}
+                    className={`flex p-5 rounded-2xl border transition-all cursor-pointer w-full items-center ${role === "Aucun accès" ? "bg-[#f4f2fd] border-[#a89af6]" : "bg-[#f9f9fb] border-[#e0e1e1] hover:border-[#bdbdbd]"}`}
+                    style={{ minHeight: 72 }}
                   >
                     <RadioGroupItem value="Aucun accès" id="aucun" className="mr-4 mt-1" />
                     <div className="font-normal w-full">
@@ -158,10 +180,13 @@ export default function InviteUserPage() {
               </div>
 
               <div className="flex justify-center">
-                <Button type="submit" disabled={isLoading} className="bg-[#6c43e0] hover:bg-[#4f32a7] text-base py-3 max-w-md w-full">
-                  {isLoading ? "Envoi en cours..." : "Envoyer l'invitation"}
+                <Button type="submit" disabled={isLoading || mailStatus === 'sending'} className="bg-[#6c43e0] hover:bg-[#4f32a7] text-base py-3 max-w-md w-full">
+                  {isLoading || mailStatus === 'sending' ? "Envoi en cours..." : mailStatus === 'sent' ? "Mail envoyé !" : "Envoyer l'invitation"}
                 </Button>
               </div>
+              {mailStatus === 'error' && (
+                <div className="text-red-600 text-center mt-2 font-semibold">Erreur lors de l'envoi de l'email d'invitation</div>
+              )}
             </form>
           </CardContent>
         </Card>
