@@ -50,9 +50,7 @@ Bordure : #bdbdbd (Gris légèrement plus soutenu)
 | Hover sur ligne sélectionnée          | Violet hover | #efeffb      |
 | Hover sur ligne non sélectionnée      | Gris (muted) | #f5f5f5*     |
 
-Couleur texte violet
-souligné,
-en violet #6c43e0,
+Couleur texte violet souligné, en violet #6c43e0,
 hover en violet foncé #4f32a7,
 texte en gras (font-semibold),
 taille text-sm.
@@ -61,8 +59,5 @@ taille text-sm.
 ```bash
 pnpm install
 pnpm dev
-
-NEXT_PUBLIC_SUPABASE_URL=https://fvcizjojzlteryioqmwb.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2l6am9qemx0ZXJ5aW9xbXdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2MjQ1MzAsImV4cCI6MjA2MDIwMDUzMH0.2Ny5DgSrENynudI3v85TyBhpdswmEC0NYhiJmT6qYn0
 
 

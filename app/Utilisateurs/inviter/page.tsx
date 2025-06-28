@@ -38,6 +38,7 @@ export default function InviteUserPage() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
+    setTriedSubmit(true)
     const error = validateEmailField(email)
     setEmailError(error)
     if (error || !role || !user) {
@@ -65,7 +66,26 @@ export default function InviteUserPage() {
           }),
         }
       )
-      if (!response.ok) throw new Error()
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        if (
+          errorData &&
+          errorData.error &&
+          (
+            errorData.error.toLowerCase().includes("déjà été invité") ||
+            errorData.error.toLowerCase().includes("déjà inscrit")
+          )
+        ) {
+          setMailStatus("error")
+          setEmailError(errorData.error)
+          toast.error(errorData.error)
+          return
+        }
+        setMailStatus("error")
+        setEmailError(errorData && errorData.error ? errorData.error : "Erreur lors de l'envoi de l'email d'invitation")
+        toast.error(errorData && errorData.error ? errorData.error : "Erreur lors de l'envoi de l'email d'invitation")
+        return
+      }
       setMailStatus("sent")
       setEmail("")
       setEmailError("")
@@ -85,7 +105,8 @@ export default function InviteUserPage() {
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value)
-    if (emailError) setEmailError("")
+    setEmailError(validateEmailField(e.target.value))
+    setTriedSubmit(false)
   }
 
   return (
@@ -110,7 +131,7 @@ export default function InviteUserPage() {
           <CardHeader>
             <CardTitle>Détails de l'invitation</CardTitle>
             <CardDescription>
-              L'utilisateur recevra un lien valable 24h pour rejoindre votre espace de travail.
+              L'utilisateur recevra un lien valable 3 jours pour rejoindre votre espace de travail.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -131,6 +152,9 @@ export default function InviteUserPage() {
                     autoComplete="off"
                     onInvalid={e => e.preventDefault()}
                   />
+                  {triedSubmit && emailError && (
+                    <div className="text-red-500 text-sm mt-1">{emailError}</div>
+                  )}
                 </div>
               </div>
 
@@ -184,8 +208,8 @@ export default function InviteUserPage() {
                   {isLoading || mailStatus === 'sending' ? "Envoi en cours..." : mailStatus === 'sent' ? "Mail envoyé !" : "Envoyer l'invitation"}
                 </Button>
               </div>
-              {mailStatus === 'error' && (
-                <div className="text-red-600 text-center mt-2 font-semibold">Erreur lors de l'envoi de l'email d'invitation</div>
+              {mailStatus === 'error' && emailError && (
+                <div className="text-red-600 text-center mt-2 font-semibold">{emailError}</div>
               )}
             </form>
           </CardContent>

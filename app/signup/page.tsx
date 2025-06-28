@@ -2,14 +2,16 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const invitationToken = searchParams.get("token")
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -22,6 +24,8 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [inviter, setInviter] = useState<{ prenom: string; nom: string } | null>(null)
+  const [invitedEmail, setInvitedEmail] = useState<string>("")
 
   // Basic validation
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -62,7 +66,7 @@ export default function SignupPage() {
       // Créer l'utilisateur dans Supabase Auth
       const { data, error: signUpError } = await createBrowserClient().auth.signUp({
         email: formData.email,
-        password: formData.password,
+        password: formData.password
       })
 
       if (signUpError) {
@@ -86,8 +90,8 @@ export default function SignupPage() {
         password: formData.password
       }))
 
-      // Redirection vers la page de complétion du profil
-      await router.replace("/complete-profile")
+      // Redirection vers la page de vérification d'email
+      await router.replace(`/signup/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       console.error("Erreur inattendue :", err)
       setErrorMessage("Une erreur est survenue lors de l'inscription")
@@ -95,6 +99,32 @@ export default function SignupPage() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    const fetchInvitation = async () => {
+      if (!invitationToken) return
+      const supabase = createBrowserClient()
+      // Cherche l'invitation par token
+      const { data: invitation } = await supabase
+        .from("Invitations")
+        .select("email_invite, compte_parent_id")
+        .eq("token", invitationToken)
+        .single()
+      if (invitation) {
+        setInvitedEmail(invitation.email_invite)
+        // Cherche le compte parent pour prénom/nom
+        const { data: parent } = await supabase
+          .from("Utilisateurs")
+          .select("prenom, nom")
+          .eq("id", invitation.compte_parent_id)
+          .single()
+        if (parent) {
+          setInviter({ prenom: parent.prenom, nom: parent.nom })
+        }
+      }
+    }
+    fetchInvitation()
+  }, [invitationToken])
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -122,6 +152,12 @@ export default function SignupPage() {
         </div>
 
         <div className="mx-auto w-full max-w-md">
+          {/* Message d'invitation */}
+          {inviter && (
+            <div className="mb-6 rounded-lg bg-[#f4f2fd] border border-[#a89af6] p-4 text-center text-[#6c43e0] font-medium">
+              Vous avez été invité par {inviter.prenom} {inviter.nom}
+            </div>
+          )}
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold text-gray-900">Créer un compte</h2>
             <p className="mt-2 text-gray-600">Commencez à utiliser Sendora gratuitement</p>
@@ -140,9 +176,10 @@ export default function SignupPage() {
                     type="text"
                     autoComplete="email"
                     required
-                    value={formData.email}
+                    value={invitedEmail || formData.email}
                     onChange={handleChange}
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
+                    readOnly={!!invitedEmail}
                   />
                   {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
                 </div>

@@ -83,14 +83,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
         .eq("id", userId)
         .single()
 
-      if (userError) {
+      if (userError && userError.code !== 'PGRST116') { // PGRST116 = no rows found
         console.error("Erreur lors de la récupération des données utilisateur:", userError)
         setUser(null)
         return
       }
 
       if (!userData) {
+        // Pas d'entrée dans la table Utilisateurs, mais session valide : probablement juste après signup
         console.log("Aucune donnée utilisateur trouvée pour l'ID:", userId)
+        // Optionnel : tu pourrais ici router vers /signup/complete-profile si besoin
+        // router.replace("/signup/complete-profile")
+        // On laisse user à null mais sans bloquer l'app
         setUser(null)
         return
       }

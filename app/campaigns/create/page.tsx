@@ -249,7 +249,7 @@ export default function CreateCampaignPage() {
                               <div className="relative w-[276px] h-[560px] bg-white rounded-[2rem] overflow-hidden z-10 flex flex-col shadow-lg">
                                 {/* Barre de statut */}
                                 <div className="flex items-center justify-between px-4 pt-3 pb-1 text-[13px] text-gray-400 font-medium">
-                                  <span>9:38</span>
+                                  <span>09:38</span>
                                   <div className="flex items-center justify-end w-full gap-1 -mr-1">
                                     {/* Wifi */}
                                     <svg width="20" height="12" viewBox="0 0 16 10" fill="none">
@@ -268,7 +268,7 @@ export default function CreateCampaignPage() {
                                 <div className="px-4 py-2 border-b border-gray-100">
                                   <div className="flex items-center justify-between">
                                     <span className="font-bold text-[#2d1863] text-base">{senderName || 'Sendora'}</span>
-                                    <span className="font-bold text-gray-700 text-base">9:38</span>
+                                    <span className="font-bold text-gray-700 text-base w-14 text-center font-poppins">09:38</span>
                                   </div>
                                   <div>
                                     <div className="font-semibold text-gray-900 text-[15px]">Objet du message...</div>
@@ -281,7 +281,7 @@ export default function CreateCampaignPage() {
                                   <div key={i} className="px-4 py-2 border-b border-gray-100">
                                     <div className="flex items-center justify-between">
                                       <span className="font-bold text-gray-300 text-base">{senderName || 'Sendora'}</span>
-                                      <span className="font-bold text-gray-300 text-base">{hour}</span>
+                                      <span className="font-bold text-gray-300 text-base w-14 text-center font-poppins">{hour}</span>
                                     </div>
                                     <div className="flex flex-col gap-1 mt-1">
                                       <div className="h-2 w-2/3 bg-gray-100 rounded-full"></div>
