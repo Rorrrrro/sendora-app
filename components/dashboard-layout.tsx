@@ -253,6 +253,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     Utilisateurs
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]">
+                  <Link href="/expediteurs" className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">
+                    <Mail className="mr-2 h-5 w-5 text-[#3d247a]" />
+                    Expéditeurs
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1 bg-[#efeffb]" />
                 <DropdownMenuItem className="w-full p-0 h-10 font-semibold rounded-lg text-[16px] text-[#3d247a]" onClick={handleSignOut}>
                   <div className="flex w-full items-center gap-2 px-3 h-10 transition-colors hover:bg-[#efeffb] hover:text-[#3d247a] rounded-lg">

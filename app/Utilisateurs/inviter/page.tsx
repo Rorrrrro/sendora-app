@@ -48,42 +48,29 @@ export default function InviteUserPage() {
     setMailStatus("idle")
     setMailStatus("sending")
     try {
-      // Récupère le JWT de l'utilisateur connecté
+      // Récupère le token de session Supabase
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
+      const token = session?.access_token;
+      // Appel à la nouvelle edge function (send_invitation ou creerInvitation)
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send_invitation`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
             email,
-            compte_parent_id: user.id,
             role_marketing: role,
           }),
         }
       )
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
-        if (
-          errorData &&
-          errorData.error &&
-          (
-            errorData.error.toLowerCase().includes("déjà été invité") ||
-            errorData.error.toLowerCase().includes("déjà inscrit")
-          )
-        ) {
-          setMailStatus("error")
-          setEmailError(errorData.error)
-          toast.error(errorData.error)
-          return
-        }
         setMailStatus("error")
-        setEmailError(errorData && errorData.error ? errorData.error : "Erreur lors de l'envoi de l'email d'invitation")
-        toast.error(errorData && errorData.error ? errorData.error : "Erreur lors de l'envoi de l'email d'invitation")
+        setEmailError(errorData?.error || "Erreur lors de l'envoi de l'invitation")
+        toast.error(errorData?.error || "Erreur lors de l'envoi de l'invitation")
         return
       }
       setMailStatus("sent")
@@ -94,10 +81,6 @@ export default function InviteUserPage() {
         setMailStatus("idle")
         router.push("/Utilisateurs")
       }, 2000)
-    } catch {
-      setMailStatus("error")
-      setEmailError("Erreur lors de l'envoi de l'email d'invitation")
-      toast.error("Erreur lors de l'envoi de l'email d'invitation")
     } finally {
       setIsLoading(false)
     }

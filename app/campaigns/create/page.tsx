@@ -239,7 +239,7 @@ export default function CreateCampaignPage() {
                               {/* Power */}
                               <div className="absolute right-[-2px] top-[110px] w-2 h-16 bg-[#d1d5db] rounded-full z-20"></div>
                               {/* Encoche découpée dans le fond, même dégradé que le fond du téléphone, barre w-10, encoche plus haute */}
-                              <div className="absolute top-[12px] left-1/2 -translate-x-1/2 w-[180px] h-9 bg-gradient-to-br from-[#f7f7f9] to-[#eeeef0] z-30 rounded-b-3xl flex items-center justify-center">
+                              <div className="absolute top-[12px] left-1/2 -translate-x-1/2 w-[160px] h-9 bg-gradient-to-br from-[#f7f7f9] to-[#eeeef0] z-30 rounded-b-3xl flex items-center justify-center">
                                 <div className="flex flex-row items-center justify-center gap-1.5 mx-auto">
                                   <div className="w-10 h-2 bg-[#cfd2d6] rounded-full"></div>
                                   <div className="w-2.5 h-2.5 bg-[#cfd2d6] rounded-full"></div>

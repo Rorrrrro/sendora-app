@@ -23,7 +23,6 @@ interface User {
   email: string
   status: "En attente" | "Acceptée" | "Expirée" | "actif" | "Actif" | string
   marketing_platform: "Propriétaire" | "Éditeur" | "Lecture" | "Aucun accès"
-  compte_parent_id: string | null
 }
 
 export default function UsersPage() {
@@ -50,8 +49,7 @@ export default function UsersPage() {
       // 2. Récupérer toutes les invitations liées au compte parent
       const { data: invitations, error: invitationsError } = await supabase
         .from("Invitations")
-        .select("*")
-        .eq("compte_parent_id", user.id);
+        .select("*");
 
       if (invitationsError) {
         console.error("Erreur lors de la récupération des invitations:", invitationsError);
@@ -68,8 +66,7 @@ export default function UsersPage() {
           id: inv.id,
           email: inv.email_invite,
           status: inv.statut || "En attente",
-          marketing_platform: inv.role_marketing,
-          compte_parent_id: inv.compte_parent_id
+          marketing_platform: inv.role_marketing
         }));
 
       // Utilisateurs existants (affichés comme 'Actif')
@@ -77,8 +74,7 @@ export default function UsersPage() {
         id: u.id,
         email: u.email,
         status: "actif",
-        marketing_platform: u.role_marketing,
-        compte_parent_id: u.compte_parent_id || null
+        marketing_platform: u.role_marketing
       }));
 
       setUsers([
@@ -97,10 +93,6 @@ export default function UsersPage() {
 
   // Ajoute la fonction de suppression
   const handleDelete = async (user: User) => {
-    if (user.status === "actif" && user.compte_parent_id === null) {
-      toast.error("Impossible de supprimer le propriétaire.");
-      return;
-    }
     if (user.status === "actif") {
       // Utilisateur enfant : confirmation
       if (!window.confirm(`Voulez-vous vraiment supprimer l'utilisateur ${user.email} ? Cette action est irréversible.`)) {
@@ -246,39 +238,36 @@ export default function UsersPage() {
                       </div>
                     </div>
                     <div className="flex items-center w-8">
-                      {user.compte_parent_id && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
-                              <MoreHorizontal className="w-5 h-5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
-                              asChild
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
+                            <MoreHorizontal className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
+                            asChild
+                          >
+                            <Link href={`/Utilisateurs/gerer-acces?id=${user.id}`} prefetch={false}>
+                              <Shield className="h-4 w-4" />
+                              Gérer les accès
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <div className="w-full py-1">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] text-[16px] transition focus:outline-none focus:ring-0"
+                              onClick={() => handleDelete(user)}
                             >
-                              <Link href={`/Utilisateurs/gerer-acces?id=${user.id}`} prefetch={false}>
-                                <Shield className="h-4 w-4" />
-                                Gérer les accès
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <div className="w-full py-1">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] text-[16px] transition focus:outline-none focus:ring-0"
-                                onClick={() => handleDelete(user)}
-                                disabled={user.status === 'actif' && user.compte_parent_id === null}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Supprimer
-                              </Button>
-                            </div>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Supprimer
+                            </Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))
