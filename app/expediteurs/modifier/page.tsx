@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { AppLayout } from "@/components/dashboard-layout";
 import { createBrowserClient } from "@/lib/supabase";
 import { useUser } from "@/contexts/user-context";
 
-export default function AjouterExpediteurPage() {
+export default function ModifierExpediteurPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +17,8 @@ export default function AjouterExpediteurPage() {
   const [now, setNow] = useState("");
   const { user } = useUser();
   const supabase = createBrowserClient();
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
 
   useEffect(() => {
     const d = new Date();
@@ -24,6 +26,22 @@ export default function AjouterExpediteurPage() {
     const heure = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     setNow(`${date}, ${heure}`);
   }, []);
+
+  useEffect(() => {
+    if (!id || !user) return;
+    supabase
+      .from("Expediteurs")
+      .select("nom, email")
+      .eq("id", id)
+      .eq("created_by", user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setName(data.nom);
+          setEmail(data.email);
+        }
+      });
+  }, [id, user]);
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -39,21 +57,20 @@ export default function AjouterExpediteurPage() {
       return;
     }
     if (!user) {
-      setError("Vous devez être connecté pour ajouter un expéditeur.");
+      setError("Vous devez être connecté pour modifier un expéditeur.");
       return;
     }
-    const { data, error } = await supabase
+    if (!id) {
+      setError("Expéditeur introuvable.");
+      return;
+    }
+    const { error } = await supabase
       .from("Expediteurs")
-      .insert([
-        {
-          nom: name,
-          email,
-          created_by: user.id
-        }
-      ])
-      .select("id");
+      .update({ nom: name, email })
+      .eq("id", id)
+      .eq("created_by", user.id);
     if (error) {
-      setError("Erreur lors de l'ajout : " + error.message);
+      setError("Erreur lors de la modification : " + error.message);
       return;
     }
     router.push("/expediteurs");
@@ -64,8 +81,8 @@ export default function AjouterExpediteurPage() {
       <div className="flex justify-center min-h-screen bg-gray-50 p-8">
         <div className="bg-white rounded-2xl shadow-lg flex flex-col md:flex-row w-full max-w-4xl p-0 overflow-hidden">
           <form onSubmit={handleSubmit} noValidate className="flex-1 w-full md:max-w-lg space-y-8 p-10">
-            <h1 className="text-3xl font-bold mb-2">Ajouter un expéditeur</h1>
-            <p className="text-gray-600 mb-6">Spécifiez ce que vos destinataires verront lorsqu'ils recevront des emails de la part de cet expéditeur.</p>
+            <h1 className="text-3xl font-bold mb-2">Modifier un expéditeur</h1>
+            <p className="text-gray-600 mb-6">Modifiez les informations que vos destinataires verront lorsqu'ils recevront des emails de la part de cet expéditeur.</p>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom d'expéditeur <span className="text-red-600">*</span></label>

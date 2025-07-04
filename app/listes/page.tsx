@@ -51,6 +51,7 @@ export default function ListesPage() {
   const [listeToEdit, setListeToEdit] = useState<Liste | null>(null)
   const [rowsPerPage, setRowsPerPage] = useState(25)
   const [currentPage, setCurrentPage] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -193,9 +194,15 @@ export default function ListesPage() {
                           </td>
                           <td className="p-4 align-middle text-left">{formatDate(liste.created_at)}</td>
                           <td className="p-4 align-middle text-center">
-                            <DropdownMenu>
+                            <DropdownMenu
+                              onOpenChange={(open) => setOpenMenuId(open ? liste.id : null)}
+                            >
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0 ${openMenuId === liste.id ? 'bg-[#efeffb] text-[#3d247a]' : ''}`}
+                                >
                                   <MoreHorizontal className="h-4 w-4" />
                                   <span className="sr-only">Ouvrir le menu</span>
                                 </Button>

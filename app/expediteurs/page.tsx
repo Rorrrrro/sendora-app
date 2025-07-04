@@ -3,42 +3,43 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/dashboard-layout";
-import { Plus, Search, CheckCircle, Shield, AlertTriangle, Pencil } from "lucide-react";
-import React, { useState } from "react";
+import { Plus, Search, CheckCircle, XCircle, AlertTriangle, Shield, Pencil, MoreHorizontal, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-
-const expediteurs = [
-  {
-    id: 1,
-    nom: "romiko",
-    email: "romain.vernay@edu.em-lyon.com",
-    verifie: true,
-    dkim: "Par défaut",
-    dkim_warning: true,
-    dmarc: true,
-    ip: "IP mutualisée"
-  },
-  {
-    id: 2,
-    nom: "test",
-    email: "test@notverified.com",
-    verifie: false,
-    dkim: "Par défaut",
-    dkim_warning: true,
-    dmarc: false,
-    ip: "IP mutualisée"
-  }
-];
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { createBrowserClient } from "@/lib/supabase";
+import { useUser } from "@/contexts/user-context";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 export default function ExpediteursPage() {
   const [search, setSearch] = useState("");
+  const [expediteurs, setExpediteurs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const { user } = useUser();
+  const supabase = createBrowserClient();
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    supabase
+      .from("Expediteurs")
+      .select("*")
+      .then(({ data, error }) => {
+        if (!error && data) setExpediteurs(data);
+        setLoading(false);
+      });
+  }, [user]);
+
   const filtered = expediteurs.filter(e =>
-    e.nom.toLowerCase().includes(search.toLowerCase()) ||
-    e.email.toLowerCase().includes(search.toLowerCase())
+    e.nom?.toLowerCase().includes(search.toLowerCase()) ||
+    e.email?.toLowerCase().includes(search.toLowerCase())
   );
-  const hasNonConforme = expediteurs.some(e => !e.verifie || e.dkim_warning || !e.dmarc);
+  const hasNonAuthentifie = expediteurs.some(e => !(e.verifie && !e.dkim_warning && e.dmarc));
 
   return (
     <AppLayout>
@@ -47,29 +48,53 @@ export default function ExpediteursPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Expéditeurs</h1>
-              <p className="text-muted-foreground mt-3">Gérez vos adresses d'expédition et leur conformité pour une meilleure délivrabilité.</p>
+              <p className="text-muted-foreground mt-3">L'expéditeur, c'est le nom et l'adresse email vus par vos destinataires. Celui-ci doit être vérifié afin de pouvoir envoyer des emails.</p>
             </div>
             <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold shadow-md" onClick={() => router.push('/expediteurs/ajouter')}>
               <Plus className="mr-2 h-4 w-4" /> Ajouter un expéditeur
             </Button>
           </div>
-          {hasNonConforme && (
-            <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg px-4 py-3 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-orange-500" />
-              <span>
-                Un ou plusieurs de vos expéditeurs ne sont pas conformes aux exigences de Google, Yahoo et Microsoft. Vérifiez la signature DKIM et le statut DMARC pour chaque expéditeur.
-              </span>
+
+          <div className="inline-flex items-center">
+            <button
+              type="button"
+              disabled
+              className="rounded-full px-8 py-3 text-base font-semibold transition-colors duration-200 bg-[#6c43e0] text-white shadow-[0_4px_24px_0_rgba(108,67,224,0.18)] relative z-10 -mr-[68px] focus:outline-none"
+            >
+              Expéditeurs
+            </button>
+            <div className="group flex gap-0 bg-[#f4f4fd] rounded-full p-1 border border-[#e0e0e0] relative z-0 transition-colors hover:bg-[#efeffb]">
+              <button
+                type="button"
+                onClick={() => router.push('/expediteurs/domaines')}
+                className="rounded-full px-5 pl-20 py-2 text-base font-semibold transition-colors duration-200 text-[#3D2478] bg-transparent focus:outline-none z-0"
+              >
+                Domaines
+              </button>
+            </div>
+          </div>
+
+          {expediteurs.some(e => e.statut_domaine !== "Authentifié") && (
+            <div className="rounded-md border-l-4 border-[#FDB022] bg-[#FFFAEB] p-4 mb-6">
+              <div className="flex items-center">
+                <AlertTriangle className="w-7 h-7 text-[#FDB022] mr-3 flex-shrink-0" aria-hidden="true" />
+                <p className="text-sm text-[#B54708]">
+                  Certains domaines ne sont pas authentifiés (
+                    <a href="#" className="underline cursor-pointer">SPF/DKIM/DMARC</a>
+                  ). Sans authentification, les emails seront envoyés depuis campagnes@sendora.fr au lieu de leur adresse, ce qui peut affecter la délivrabilité. 
+                  <Link href="/expediteurs/domaines" className="underline font-semibold text-[#B54708] ml-1">
+                    Cliquez ici pour authentifier vos domaines
+                  </Link>
+                </p>
+              </div>
             </div>
           )}
-          <Card className="border-none shadow-sm bg-[#FFFEFF]">
+          <Card className="border-none shadow-sm bg-[#FFFEFF] mt-6">
             <CardHeader className="pb-3">
-              <CardDescription>
-                <span className="text-lg font-bold text-foreground">
-                  {filtered.length === 0
-                    ? "Aucun expéditeur pour le moment"
-                    : `${filtered.length} expéditeur${filtered.length > 1 ? "s" : ""}`}
-                </span>
-              </CardDescription>
+              <CardDescription />
+              {filtered.length === 0 && !loading ? (
+                <div className="text-center text-muted-foreground py-8">Aucun expéditeur trouvé.</div>
+              ) : null}
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4">
@@ -83,7 +108,33 @@ export default function ExpediteursPage() {
                     onChange={e => setSearch(e.target.value)}
                   />
                 </div>
-                {filtered.map(e => (
+                {loading ? (
+                  <div className="flex items-center justify-between rounded-2xl border px-6 py-4 bg-[#FAFAFD] border-[#E0E1E1] shadow-sm mb-2">
+                    <div className="flex items-center flex-1 min-w-0 mr-4 gap-8">
+                      <div className="flex flex-col gap-2.5 w-[220px]">
+                        <Skeleton className="h-4 w-20 mb-2" />
+                        <Skeleton className="h-6 w-32" />
+                      </div>
+                      <div className="flex flex-col gap-2.5 w-[280px]">
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <Skeleton className="h-6 w-40" />
+                      </div>
+                      <div className="flex flex-col gap-2.5 w-[120px]">
+                        <Skeleton className="h-4 w-16 mb-2" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                      <div className="flex flex-col gap-2.5 w-[120px]">
+                        <Skeleton className="h-4 w-16 mb-2" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                    </div>
+                    <div className="flex items-center w-8">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                    </div>
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">Aucun expéditeur trouvé.</div>
+                ) : filtered.map(e => (
                   <div
                     key={e.id}
                     className="flex flex-col md:flex-row items-center justify-between rounded-2xl border px-6 py-4 transition-all group bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0] shadow-sm hover:shadow-md min-h-[80px]"
@@ -91,7 +142,7 @@ export default function ExpediteursPage() {
                     <div className="flex flex-col md:flex-row items-center flex-1 min-w-0 gap-8 w-full">
                       <div className="flex flex-col gap-2.5 w-[220px] justify-center">
                         <span className="text-xs text-muted-foreground font-medium">NOM</span>
-                        <div className="font-semibold text-base text-[#23272f]">{e.nom}</div>
+                        <div className="font-normal text-base text-[#23272f]">{e.nom}</div>
                       </div>
                       <div className="flex flex-col gap-2.5 w-[280px] justify-center">
                         <span className="text-xs text-muted-foreground font-medium">EMAIL</span>
@@ -99,59 +150,64 @@ export default function ExpediteursPage() {
                       </div>
                       <div className="flex flex-col gap-2.5 w-[120px] justify-center">
                         <span className="text-xs text-muted-foreground font-medium">STATUT</span>
-                        {e.verifie ? (
-                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle className="w-4 h-4 mr-1" /> Vérifié
+                        {e.statut === "Vérifié" ? (
+                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-[#D1FADF] text-[#039855]">
+                            <CheckCircle className="w-4 h-4 mr-1 text-[#039855]" /> Vérifié
                           </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
-                            <Shield className="w-4 h-4 mr-1" /> Non vérifié
+                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-[#FEE4E2] text-[#B42318]">
+                            <XCircle className="w-4 h-4 mr-1 text-[#B42318]" /> Non vérifié
                           </span>
                         )}
                       </div>
                       <div className="flex flex-col gap-2.5 w-[120px] justify-center">
                         <span className="text-xs text-muted-foreground font-medium">AUTHENTIFIÉ</span>
-                        {e.verifie && !e.dkim_warning && e.dmarc ? (
-                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-green-100 text-green-800">Oui</span>
+                        {e.statut_domaine === "Authentifié" ? (
+                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-[#D1FADF] text-[#039855]">
+                            <CheckCircle className="w-4 h-4 mr-1 text-[#039855]" /> Oui
+                          </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
-                            Non
-                            <AlertTriangle className="w-4 h-4 text-red-500 ml-1" />
+                          <span className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium bg-[#FEE4E2] text-[#B42318]">
+                            <AlertTriangle className="w-4 h-4 mr-1 text-[#B42318]" /> Non
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center mt-4 md:mt-0 justify-center gap-2">
-                      {!e.verifie || e.dkim_warning || !e.dmarc ? (
-                        <>
-                          <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold px-4 py-2 rounded-md text-sm mr-2">Authentifier</Button>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                className="rounded-full p-2 transition group text-muted-foreground hover:bg-[#e5e4fa] focus:bg-[#e5e4fa] hover:text-[#3d247a] focus:text-[#3d247a] hover:scale-105 duration-150"
-                                aria-label="Modifier"
-                                onClick={() => {/* action de modification ici */}}
-                              >
-                                <Pencil className="w-5 h-5 group-hover:text-[#3d247a] group-focus:text-[#3d247a]" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Modifier</TooltipContent>
-                          </Tooltip>
-                        </>
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              className="rounded-full p-2 transition group text-muted-foreground hover:bg-[#e5e4fa] focus:bg-[#e5e4fa] hover:text-[#3d247a] focus:text-[#3d247a] hover:scale-105 duration-150"
-                              aria-label="Modifier"
-                              onClick={() => {/* action de modification ici */}}
-                            >
-                              <Pencil className="w-5 h-5 group-hover:text-[#3d247a] group-focus:text-[#3d247a]" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>Modifier</TooltipContent>
-                        </Tooltip>
+                      {e.statut !== "Vérifié" && (
+                        <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold px-4 py-2 rounded-md text-sm mr-2">Vérifier</Button>
                       )}
+                      <DropdownMenu
+                        onOpenChange={(open) => setOpenMenuId(open ? e.id : null)}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={`rounded-full p-2 transition group text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus:bg-[#e5e4fa] focus:text-[#3d247a] hover:scale-105 duration-150 ${openMenuId === e.id ? 'bg-[#efeffb] text-[#3d247a]' : ''}`}
+                            aria-label="Actions"
+                          >
+                            <MoreHorizontal className="w-5 h-5 group-hover:text-[#3d247a] group-focus:text-[#3d247a]" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition cursor-pointer"
+                            onClick={() => router.push(`/expediteurs/modifier?id=${e.id}`)}
+                          >
+                            <Pencil className="w-4 h-4 mr-2" /> Modifier
+                          </DropdownMenuItem>
+                          <div className="w-full py-1">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] text-[16px] transition focus:outline-none focus:ring-0"
+                              onClick={() => console.log('Supprimer', e.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Supprimer
+                            </Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
@@ -160,6 +216,15 @@ export default function ExpediteursPage() {
           </Card>
         </div>
       </TooltipProvider>
+      <style jsx global>{`
+        .menu-action-item:hover {
+          background-color: #efeffb !important;
+          color: #3d247a !important;
+        }
+        .menu-action-item:hover svg {
+          color: #3d247a !important;
+        }
+      `}</style>
     </AppLayout>
   );
 } 

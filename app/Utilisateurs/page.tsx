@@ -136,21 +136,7 @@ export default function UsersPage() {
         </div>
 
         <Card className="border-none shadow-sm bg-[#FFFEFF]">
-          <CardHeader className="pb-3">
-            {loading ? (
-              <div className="pl-4 pt-2">
-                <Skeleton className="h-6 w-32 rounded-md" />
-              </div>
-            ) : (
-              <CardDescription>
-                <span className="text-lg font-bold text-foreground">
-                  {users.length === 0
-                    ? "Aucun utilisateur pour le moment"
-                    : `${users.length} utilisateur${users.length > 1 ? "s" : ""}`}
-                </span>
-              </CardDescription>
-            )}
-          </CardHeader>
+          <CardHeader className="pb-3" />
           <CardContent>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
               <div className="relative w-full max-w-sm">

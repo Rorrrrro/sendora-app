@@ -127,6 +127,7 @@ export default function CampaignsPage() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const router = useRouter();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const rowsPerPage = 10;
   const totalCampaigns = campaigns.length;
   const totalPages = Math.max(1, Math.ceil(totalCampaigns / rowsPerPage));
@@ -154,9 +155,7 @@ export default function CampaignsPage() {
           <CardHeader className="pb-3">
             <CardDescription>
               <span className="text-lg font-bold text-foreground">
-                {totalCampaigns === 0
-                  ? "Aucune campagne pour le moment"
-                  : `Vous avez ${totalCampaigns} campagne${totalCampaigns > 1 ? "s" : ""}`}
+                {totalCampaigns === 0 && "Aucune campagne pour le moment"}
               </span>
             </CardDescription>
           </CardHeader>
@@ -263,9 +262,15 @@ export default function CampaignsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-4 md:mt-0 ml-6">
-                      <DropdownMenu>
+                      <DropdownMenu
+                        onOpenChange={(open) => setOpenMenuId(open ? campaign.id : null)}
+                      >
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0 ${openMenuId === campaign.id ? 'bg-[#efeffb] text-[#3d247a]' : ''}`}
+                          >
                             <MoreHorizontal className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
