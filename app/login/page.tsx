@@ -83,7 +83,7 @@ export default function LoginPage() {
 
       if (data.user) {
         // Si "Se souvenir de moi" n'est pas coché, on supprime la session
-        if (!rememberMe) {
+        if (!rememberMe && typeof window !== 'undefined') {
           localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token')
         }
 

@@ -95,7 +95,7 @@ export default function UsersPage() {
   const handleDelete = async (user: User) => {
     if (user.status === "actif") {
       // Utilisateur enfant : confirmation
-      if (!window.confirm(`Voulez-vous vraiment supprimer l'utilisateur ${user.email} ? Cette action est irréversible.`)) {
+      if (typeof window !== 'undefined' && !window.confirm(`Voulez-vous vraiment supprimer l'utilisateur ${user.email} ? Cette action est irréversible.`)) {
         return;
       }
       const { error } = await supabase.from("Utilisateurs").delete().eq("id", user.id);
@@ -104,7 +104,9 @@ export default function UsersPage() {
       } else {
         toast.success("Utilisateur supprimé.");
         // Rafraîchir la liste
-        window.location.reload();
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       }
     } else {
       // Invitation : suppression directe
@@ -113,7 +115,9 @@ export default function UsersPage() {
         toast.error("Erreur lors de la suppression de l'invitation.");
       } else {
         toast.success("Invitation supprimée.");
-        window.location.reload();
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       }
     }
   };

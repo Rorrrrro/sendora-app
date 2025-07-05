@@ -1,9 +1,9 @@
 "use client"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { createBrowserClient } from "@/lib/supabase"
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const email = searchParams.get("email")
   const token = searchParams.get("token")
@@ -97,5 +97,21 @@ export default function VerifyEmailPage() {
         {resentError && <div className="mt-2 text-red-600 text-sm">{resentError}</div>}
       </div>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
+          <div className="h-8 w-48 bg-gray-200 rounded mb-4 mx-auto"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded mb-4 mx-auto"></div>
+          <div className="h-10 w-32 bg-gray-200 rounded mx-auto"></div>
+        </div>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 } 

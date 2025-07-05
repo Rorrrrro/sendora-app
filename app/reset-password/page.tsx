@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
 
     try {
       const { error } = await createBrowserClient().auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined,
       })
 
       if (error) {

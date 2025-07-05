@@ -14,7 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { AppLayout } from "@/components/dashboard-layout"
 import { useUser } from "@/contexts/user-context"
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useRef, useCallback, Suspense } from "react"
 import { createBrowserClient } from "@/lib/supabase"
 import Link from "next/link"
 import { CreateContactSidebar } from "@/components/create-contact-sidebar"
@@ -189,7 +189,7 @@ function ContactsTable({
   )
 }
 
-export default function ContactsPage() {
+function ContactsContent() {
   const { user } = useUser()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
@@ -817,5 +817,30 @@ export default function ContactsPage() {
         }
       `}</style>
     </AppLayout>
+  )
+}
+
+export default function ContactsPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+              <p className="text-muted-foreground">Gérez vos contacts et listes</p>
+            </div>
+            <div className="h-10 w-32 bg-gray-200 rounded"></div>
+          </div>
+          <Card>
+            <CardContent className="p-6">
+              <TableSkeleton columns={5} rows={6} />
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    }>
+      <ContactsContent />
+    </Suspense>
   )
 }

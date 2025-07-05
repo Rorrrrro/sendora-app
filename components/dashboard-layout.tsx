@@ -67,7 +67,7 @@ const navItems: NavItem[] = [
 
 // Fonction utilitaire pour retrouver la couleur d'avatar personnalisée (localStorage)
 function getStoredAvatarColor(user: any) {
-  if (!user) return null;
+  if (!user || typeof window === 'undefined') return null;
   try {
     const key = `avatarColor_${user.prenom || ''}_${user.nom || ''}`;
     return localStorage.getItem(key);
