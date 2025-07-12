@@ -76,3 +76,4 @@ NULL → compte principal.
 
 UUID d’un autre utilisateur → compte invité, rattaché au parent qui a invité.
 
+salut
