@@ -19,4 +19,5 @@ export default NextAuth({
   pages: {
     signIn: "/connexion", // Redirige vers ta page de connexion custom
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }); 
