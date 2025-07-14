@@ -51,7 +51,7 @@
     "next": "15.2.4",
     "next-auth": "^4.24.11",
     "next-themes": "latest",
-    "nodemailer": "^7.0.5",
+    "nodemailer": "^6.10.1",
     "papaparse": "^5.4.1",
     "react": "^19",
     "react-day-picker": "latest",
