@@ -7,12 +7,12 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
 function SignupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const invitationToken = searchParams.get("token")
+  const invitationToken = searchParams?.get("token") ?? null;
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -291,6 +291,7 @@ function SignupContent() {
                 onClick={async () => {
                   setIsLoading(true);
                   try {
+                    await signOut({ redirect: false });
                     await signIn('google', { callbackUrl: '/inscription/completer-profil' });
                   } catch (err) {
                     setErrorMessage("Erreur lors de l'inscription avec Google");

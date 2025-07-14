@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
 export default function LoginPage() {
   const supabase = createBrowserClient()
@@ -232,6 +232,7 @@ export default function LoginPage() {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
+                      await signOut({ redirect: false });
                       await signIn('google', { callbackUrl: '/accueil' });
                     } catch (err) {
                       setErrorMessage("Erreur lors de la connexion avec Google");

@@ -23,11 +23,16 @@ export default NextAuth({
   callbacks: {
     async signIn({ user }) {
       try {
-        await fetch(`${process.env.NEXTAUTH_URL}/api/sync-user`, {
+        const res = await fetch(`${process.env.NEXTAUTH_URL}/api/sync-user`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: user.email, name: user.name })
         });
+        const data = await res.json();
+        // Si on est côté navigateur, sur la page d'inscription, et que l'email existe déjà, on bloque la connexion
+        if (typeof window !== "undefined" && window.location.pathname.startsWith("/inscription") && data.alreadyExists) {
+          return false;
+        }
       } catch (e) {
         // Ignore l'erreur pour ne pas bloquer la connexion
       }
