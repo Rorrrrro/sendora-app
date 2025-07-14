@@ -291,7 +291,7 @@ function SignupContent() {
                 onClick={async () => {
                   setIsLoading(true);
                   try {
-                    await signIn('google');
+                    await signIn('google', { callbackUrl: '/inscription/completer-profil' });
                   } catch (err) {
                     setErrorMessage("Erreur lors de l'inscription avec Google");
                   } finally {

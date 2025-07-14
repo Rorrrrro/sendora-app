@@ -232,7 +232,7 @@ export default function LoginPage() {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
-                      await signIn('google');
+                      await signIn('google', { callbackUrl: '/accueil' });
                     } catch (err) {
                       setErrorMessage("Erreur lors de la connexion avec Google");
                     } finally {
