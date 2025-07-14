@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const supabase = createBrowserClient()
@@ -189,7 +190,7 @@ export default function LoginPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={handleChange}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-gray-300 text-white bg-[#6c43e0] checked:bg-[#6c43e0] focus:ring-[#6c43e0] accent-[#6c43e0]"
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                     Se souvenir de moi
@@ -228,6 +229,17 @@ export default function LoginPage() {
                   type="button"
                   id="google-login"
                   className="flex w-full justify-center rounded-md border border-gray-300 bg-[#FFFEFF] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  onClick={async () => {
+                    setIsLoading(true);
+                    try {
+                      await signIn('google');
+                    } catch (err) {
+                      setErrorMessage("Erreur lors de la connexion avec Google");
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="mr-2" height="18" viewBox="0 0 24 24" width="18">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

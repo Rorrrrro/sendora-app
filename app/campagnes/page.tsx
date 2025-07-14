@@ -219,70 +219,90 @@ export default function CampaignsPage() {
               </div>
             </div>
             <div className="mt-6">
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nom</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statut</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Destinataires</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Ouvertures</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Clics</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Dernier envoi</th>
-                      <th className="px-6 py-3" />
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {paginatedCampaigns.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                          Aucune campagne à afficher.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedCampaigns.map((campaign) => {
-                        const config = statusConfig[campaign.status];
-                        const Icon = config.icon;
-                        return (
-                          <tr key={campaign.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap font-semibold text-[#3d247a]">{campaign.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold gap-1.5 ${config.color}`}>
-                                <Icon className="w-3 h-3" />
-                                {config.label}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">{campaign.recipients > 0 ? campaign.recipients.toLocaleString() : '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{campaign.openRate > 0 ? campaign.openRate + '%' : '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{campaign.clickRate > 0 ? campaign.clickRate + '%' : '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{campaign.sentDate ? new Date(campaign.sentDate).toLocaleDateString('fr-FR') : '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a]">
-                                    <MoreHorizontal className="w-5 h-5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem className="flex items-center gap-2">
-                                    <Eye className="h-4 w-4" /> Aperçu & Test
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="flex items-center gap-2">
-                                    <Pencil className="h-4 w-4" /> Modifier
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="flex items-center gap-2 text-destructive">
-                                    <Trash2 className="h-4 w-4" /> Supprimer
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+              {/* Affichage en bulles verticales */}
+              <div className="space-y-4">
+                {paginatedCampaigns.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Aucune campagne à afficher.
+                  </div>
+                ) : (
+                  paginatedCampaigns.map((campaign) => {
+                    const config = statusConfig[campaign.status];
+                    const Icon = config.icon;
+                    return (
+                      <div
+                        key={campaign.id}
+                        className={`flex items-center justify-between rounded-2xl border px-6 py-4 transition-all group
+                          bg-[#FAFAFD] border-[#E0E1E1]
+                          hover:bg-[#f4f4fd] hover:border-[#6C43E0] shadow-sm hover:shadow-md`}
+                      >
+                        <div className="flex items-center justify-start flex-1 min-w-0 mr-4 gap-8">
+                          <div className="flex flex-col gap-2.5 w-[220px]">
+                            <span className="text-xs text-muted-foreground font-medium">NOM</span>
+                            <div className="font-semibold text-base text-[#23272f] truncate" title={campaign.name}>{campaign.name}</div>
+                          </div>
+                          <div className="flex flex-col gap-2.5 w-[120px]">
+                            <span className="text-xs text-muted-foreground font-medium">STATUT</span>
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold gap-1.5 ${config.color}`}>
+                              <Icon className="w-3 h-3" />
+                              {config.label}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-2.5 w-[120px]">
+                            <span className="text-xs text-muted-foreground font-medium">DESTINATAIRES</span>
+                            <span className="text-base text-[#23272f]">{campaign.recipients > 0 ? campaign.recipients.toLocaleString() : '-'}</span>
+                          </div>
+                          <div className="flex flex-col gap-2.5 w-[100px]">
+                            <span className="text-xs text-muted-foreground font-medium">OUVERTURES</span>
+                            <span className="text-base text-[#23272f]">{campaign.openRate > 0 ? campaign.openRate + '%' : '-'}</span>
+                          </div>
+                          <div className="flex flex-col gap-2.5 w-[80px]">
+                            <span className="text-xs text-muted-foreground font-medium">CLICS</span>
+                            <span className="text-base text-[#23272f]">{campaign.clickRate > 0 ? campaign.clickRate + '%' : '-'}</span>
+                          </div>
+                          <div className="flex flex-col gap-2.5 w-[120px]">
+                            <span className="text-xs text-muted-foreground font-medium">DERNIER ENVOI</span>
+                            <span className="text-base text-[#23272f]">{campaign.sentDate ? new Date(campaign.sentDate).toLocaleDateString('fr-FR') : '-'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center w-8">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 text-muted-foreground hover:bg-[#e5e4fa] hover:text-[#3d247a] focus-visible:ring-0 focus-visible:ring-offset-0">
+                                <MoreHorizontal className="w-5 h-5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
+                              >
+                                <Eye className="h-4 w-4" />
+                                Aperçu & Test
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Modifier
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <div className="w-full py-1">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] text-[16px] transition focus:outline-none focus:ring-0"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Supprimer
+                                </Button>
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
               {/* Pagination */}
               <div className="flex items-center gap-4 justify-end text-sm mt-6">
@@ -317,6 +337,15 @@ export default function CampaignsPage() {
           </CardContent>
         </Card>
       </div>
+      <style jsx global>{`
+  .menu-action-item:hover {
+    background-color: #efeffb !important;
+    color: #3d247a !important;
+  }
+  .menu-action-item:hover svg {
+    color: #3d247a !important;
+  }
+`}</style>
     </AppLayout>
   );
 }
