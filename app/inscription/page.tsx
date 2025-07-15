@@ -161,6 +161,24 @@ function SignupContent() {
     fetchInvitation()
   }, [invitationToken])
 
+  useEffect(() => {
+    createBrowserClient().auth.getUser().then(async ({ data, error }) => {
+      if (data?.user) {
+        const { data: userData } = await createBrowserClient()
+          .from("Utilisateurs")
+          .select("id")
+          .eq("id", data.user.id)
+          .single()
+        if (userData) {
+          setErrorMessage("Un compte existe déjà avec cet email Google. Veuillez vous connecter.")
+          await createBrowserClient().auth.signOut()
+        } else {
+          router.replace("/inscription/completer-profil")
+        }
+      }
+    })
+  }, [])
+
   // Ajout d'une variable pour savoir si le bouton doit être désactivé
   const isFormEmpty = !formData.email || !formData.password;
   const showPasswordError = isSubmitted && !isPasswordStrong(formData.password);
@@ -291,6 +309,7 @@ function SignupContent() {
                 onClick={async () => {
                   setIsLoading(true);
                   try {
+                    await createBrowserClient().auth.signOut();
                     await createBrowserClient().auth.signInWithOAuth({ provider: 'google' });
                   } catch (err) {
                     setErrorMessage("Erreur lors de l'inscription avec Google");

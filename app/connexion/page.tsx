@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
@@ -114,6 +114,24 @@ export default function LoginPage() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (data?.user) {
+        const { data: userData } = await supabase
+          .from("Utilisateurs")
+          .select("id")
+          .eq("id", data.user.id)
+          .single()
+        if (userData) {
+          router.replace("/accueil")
+        } else {
+          setErrorMessage("Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire.")
+          await supabase.auth.signOut()
+        }
+      }
+    })
+  }, [])
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -248,6 +266,7 @@ export default function LoginPage() {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
+                      await supabase.auth.signOut();
                       await supabase.auth.signInWithOAuth({ provider: 'google' });
                     } catch (err) {
                       setErrorMessage("Erreur lors de la connexion avec Google");
