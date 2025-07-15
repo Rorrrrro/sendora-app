@@ -136,12 +136,6 @@ export default function LoginPage() {
           </div>
 
           <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
-            {/* Affiche une erreur NextAuth si présente (ex: email Google non trouvé) */}
-            {errorParam === 'AccessDenied' && (
-              <div className="mb-4 rounded-md bg-red-50 p-3">
-                <p className="text-sm text-red-600">Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire avec votre email.</p>
-              </div>
-            )}
             <form className="space-y-6" onSubmit={handleSubmit} id="login-form">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">

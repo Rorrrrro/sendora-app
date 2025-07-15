@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@next-auth/supabase-adapter": "^0.2.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
@@ -49,7 +48,6 @@
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
-    "next-auth": "^4.24.11",
     "next-themes": "latest",
     "nodemailer": "^6.10.1",
     "papaparse": "^5.4.1",
