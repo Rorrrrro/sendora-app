@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
-import { signIn, signOut } from "next-auth/react";
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const supabase = createBrowserClient()
@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
+  const searchParams = useSearchParams()
+  const errorParam = searchParams?.get("error")
 
   // Basic validation
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -134,6 +136,12 @@ export default function LoginPage() {
           </div>
 
           <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
+            {/* Affiche une erreur NextAuth si présente (ex: email Google non trouvé) */}
+            {errorParam === 'AccessDenied' && (
+              <div className="mb-4 rounded-md bg-red-50 p-3">
+                <p className="text-sm text-red-600">Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire avec votre email.</p>
+              </div>
+            )}
             <form className="space-y-6" onSubmit={handleSubmit} id="login-form">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -232,8 +240,7 @@ export default function LoginPage() {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
-                      await signOut({ redirect: false });
-                      await signIn('google', { callbackUrl: '/accueil' });
+                      await supabase.auth.signInWithOAuth({ provider: 'google' });
                     } catch (err) {
                       setErrorMessage("Erreur lors de la connexion avec Google");
                     } finally {

@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
-import { signIn, signOut } from "next-auth/react";
+// Supprimer : import { signIn, signOut } from "next-auth/react";
 
 function SignupContent() {
   const router = useRouter()
@@ -298,8 +298,7 @@ function SignupContent() {
                 onClick={async () => {
                   setIsLoading(true);
                   try {
-                    await signOut({ redirect: false });
-                    await signIn('google', { callbackUrl: '/inscription/completer-profil' });
+                    await createBrowserClient().auth.signInWithOAuth({ provider: 'google' });
                   } catch (err) {
                     setErrorMessage("Erreur lors de l'inscription avec Google");
                   } finally {

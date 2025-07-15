@@ -4,7 +4,6 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { createBrowserClientInstance } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react";
 
 type UserInfo = {
   id: string
@@ -140,14 +139,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshUserData()
   }, [])
-
-  // Rafraîchit les données utilisateur à chaque changement de session NextAuth
-  const { data: session } = useSession();
-  useEffect(() => {
-    if (session?.user?.email) {
-      refreshUserData();
-    }
-  }, [session?.user?.email]);
 
   return (
     <UserContext.Provider value={{ user, setUser, isLoading, refreshUserData, signOut, customAvatarColor, setCustomAvatarColor }}>
