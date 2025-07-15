@@ -262,7 +262,7 @@ export default function LoginPage() {
                   <span className="bg-[#FFFEFF] px-2 text-gray-500">Ou continuer avec</span>
                 </div>
               </div>
-              <div>
+              {/* <div>
                 <button
                   type="button"
                   id="google-login"
@@ -286,6 +286,9 @@ export default function LoginPage() {
                   </svg>
                   Se connecter avec Google
                 </button>
+              </div> */}
+              <div className="mt-6 text-center text-sm text-gray-500">
+                🚀 La connexion Google sera bientôt disponible !
               </div>
             </form>
 
