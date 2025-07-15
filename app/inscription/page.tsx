@@ -162,22 +162,35 @@ function SignupContent() {
   }, [invitationToken])
 
   useEffect(() => {
+    // Déconnexion automatique à l'arrivée sur la page si une session existe
     createBrowserClient().auth.getUser().then(async ({ data, error }) => {
       if (data?.user) {
-        const { data: userData } = await createBrowserClient()
-          .from("Utilisateurs")
-          .select("id")
-          .eq("id", data.user.id)
-          .single()
-        if (userData) {
-          setErrorMessage("Un compte existe déjà avec cet email Google. Veuillez vous connecter.")
-          await createBrowserClient().auth.signOut()
-        } else {
-          router.replace("/inscription/completer-profil")
-        }
+        await createBrowserClient().auth.signOut();
+        window.location.reload();
       }
-    })
-  }, [])
+    });
+  }, []);
+
+  // Après un flow Google, appliquer la logique de redirection/message d'erreur
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+      createBrowserClient().auth.getUser().then(async ({ data, error }) => {
+        if (data?.user) {
+          const { data: userData } = await createBrowserClient()
+            .from("Utilisateurs")
+            .select("id")
+            .eq("id", data.user.id)
+            .single();
+          if (userData) {
+            setErrorMessage("Un compte existe déjà avec cet email Google. Veuillez vous connecter.");
+            await createBrowserClient().auth.signOut();
+          } else {
+            router.replace("/inscription/completer-profil");
+          }
+        }
+      });
+    }
+  }, []);
 
   // Ajout d'une variable pour savoir si le bouton doit être désactivé
   const isFormEmpty = !formData.email || !formData.password;

@@ -116,22 +116,37 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    // Déconnexion automatique à l'arrivée sur la page si une session existe
     supabase.auth.getUser().then(async ({ data, error }) => {
       if (data?.user) {
-        const { data: userData } = await supabase
-          .from("Utilisateurs")
-          .select("id")
-          .eq("id", data.user.id)
-          .single()
-        if (userData) {
-          router.replace("/accueil")
-        } else {
-          setErrorMessage("Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire.")
-          await supabase.auth.signOut()
-        }
+        await supabase.auth.signOut();
+        // On reload la page pour être sûr d'être déconnecté
+        window.location.reload();
       }
-    })
-  }, [])
+    });
+  }, []);
+
+  // Après un flow Google, appliquer la logique de redirection/message d'erreur
+  useEffect(() => {
+    // On ne fait la vérification que si on vient d'un flow OAuth (présence du paramètre "code" dans l'URL)
+    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+      supabase.auth.getUser().then(async ({ data, error }) => {
+        if (data?.user) {
+          const { data: userData } = await supabase
+            .from("Utilisateurs")
+            .select("id")
+            .eq("id", data.user.id)
+            .single();
+          if (userData) {
+            router.replace("/accueil");
+          } else {
+            setErrorMessage("Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire.");
+            await supabase.auth.signOut();
+          }
+        }
+      });
+    }
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
