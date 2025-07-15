@@ -127,6 +127,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
         console.error("Erreur lors de la déconnexion Supabase:", error)
         throw error
       }
+      // Suppression manuelle des cookies côté client (NextAuth, Supabase, etc.)
+      if (typeof window !== 'undefined') {
+        // Supprime tous les cookies du domaine courant
+        document.cookie.split(';').forEach(c => {
+          document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+        });
+        // Vide le localStorage et le sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+      }
       setUser(null)
       router.replace("/")
     } catch (error) {
