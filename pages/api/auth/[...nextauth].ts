@@ -22,8 +22,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn(params: { user: User | AdapterUser; account: Account | null; profile?: Profile; email?: { verificationRequest?: boolean }; credentials?: Record<string, unknown> }) {
       const email = params.user.email as string
-      const isSignup = params.account?.providerAccountId && params.account?.type === 'oauth' && params.account?.provider === 'google' && params.account?.refresh_token
-      // Vérifie si l'utilisateur existe déjà dans Supabase Auth
+      // Connexion stricte : on ne crée jamais d'utilisateur ici
       const { data: existingUser } = await supabaseAdmin
         .from('auth.users')
         .select('id')
@@ -33,28 +32,8 @@ export const authOptions: NextAuthOptions = {
         // Connexion : OK, l'utilisateur existe
         return true
       } else {
-        // Si on est sur la page d'inscription (à affiner si besoin)
-        if (isSignup) {
-          // Crée l'utilisateur dans Supabase Auth
-          const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-            email,
-            email_confirm: true,
-            user_metadata: {
-              name: params.user.name || '',
-            },
-          })
-          if (createError) {
-            // Erreur à la création
-            return "/inscription?error=creation"
-          }
-          // Crée la ligne dans la table métier Utilisateurs si besoin
-          await supabaseAdmin.from('Utilisateurs').upsert({ email, prenom: params.user.name || '' }, { onConflict: 'email' })
-          // Redirige vers compléter profil
-          return "/inscription/completer-profil"
-        } else {
-          // Connexion : utilisateur non trouvé
-          return "/connexion?error=notfound"
-        }
+        // Connexion : utilisateur non trouvé
+        return "/connexion?error=notfound"
       }
     },
     async jwt({ token, user }: { token: JWT, user?: User | AdapterUser }) {
