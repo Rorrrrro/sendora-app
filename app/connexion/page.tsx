@@ -9,6 +9,19 @@ import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
+
+function ErrorParam({ setErrorMessage }: { setErrorMessage: (msg: string) => void }) {
+  const searchParams = useSearchParams();
+  const errorParam = searchParams?.get("error");
+  // Si besoin, on peut afficher un message ou setter l'erreur
+  // Ici, on ne fait qu'afficher, adapter selon le besoin UX
+  if (!errorParam) return null;
+  if (errorParam === "AccessDenied") {
+    return <div className="mb-4 rounded-md bg-red-50 p-3"><p className="text-sm text-red-600">Aucun compte n’existe avec cet email Google. Veuillez d’abord vous inscrire avec votre email.</p></div>;
+  }
+  return null;
+}
 
 export default function LoginPage() {
   const supabase = createBrowserClient()
@@ -26,8 +39,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
-  const searchParams = useSearchParams()
-  const errorParam = searchParams?.get("error")
 
   // Basic validation
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -136,6 +147,9 @@ export default function LoginPage() {
           </div>
 
           <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
+            <Suspense fallback={null}>
+              <ErrorParam setErrorMessage={setErrorMessage} />
+            </Suspense>
             <form className="space-y-6" onSubmit={handleSubmit} id="login-form">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
