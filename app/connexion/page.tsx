@@ -10,6 +10,7 @@ import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
+import { signIn } from "next-auth/react"
 
 function ErrorParam({ setErrorMessage }: { setErrorMessage: (msg: string) => void }) {
   const searchParams = useSearchParams();
@@ -261,26 +262,12 @@ export default function LoginPage() {
                   <span className="bg-[#FFFEFF] px-2 text-gray-500">Ou continuer avec</span>
                 </div>
               </div>
-
               <div>
                 <button
                   type="button"
                   id="google-login"
                   className="flex w-full justify-center rounded-md border border-gray-300 bg-[#FFFEFF] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                  onClick={async () => {
-                    setIsLoading(true);
-                    try {
-                      await supabase.auth.signOut();
-                      setTimeout(async () => {
-                        await supabase.auth.signInWithOAuth({ provider: 'google' });
-                      }, 200);
-                    } catch (err) {
-                      setErrorMessage("Erreur lors de la connexion avec Google");
-                    } finally {
-                      setIsLoading(false);
-                    }
-                  }}
-                  disabled={isLoading}
+                  onClick={() => signIn('google')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="mr-2" height="18" viewBox="0 0 24 24" width="18">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

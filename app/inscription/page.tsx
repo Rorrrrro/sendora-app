@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
+import { signIn } from "next-auth/react"
 
 function SignupContent() {
   const router = useRouter()
@@ -161,26 +162,7 @@ function SignupContent() {
     fetchInvitation()
   }, [invitationToken])
 
-  // Après un flow Google, appliquer la logique de redirection/message d'erreur
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
-      createBrowserClient().auth.getUser().then(async ({ data, error }) => {
-        if (data?.user) {
-          const { data: userData } = await createBrowserClient()
-            .from("Utilisateurs")
-            .select("id")
-            .eq("id", data.user.id)
-            .single();
-          if (userData) {
-            setErrorMessage("Un compte existe déjà avec cet email Google. Veuillez vous connecter.");
-            await createBrowserClient().auth.signOut();
-          } else {
-            router.replace("/inscription/completer-profil");
-          }
-        }
-      });
-    }
-  }, []);
+  // SUPPRIMER tout le code du bouton Google et la logique associée (signOut, signInWithOAuth, useEffect post-Google, etc.)
 
   // Ajout d'une variable pour savoir si le bouton doit être désactivé
   const isFormEmpty = !formData.email || !formData.password;
@@ -309,20 +291,7 @@ function SignupContent() {
                 type="button"
                 id="google-signup"
                 className="flex w-full justify-center rounded-md border border-gray-300 bg-[#FFFEFF] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 mb-4"
-                onClick={async () => {
-                  setIsLoading(true);
-                  try {
-                    await createBrowserClient().auth.signOut();
-                    setTimeout(async () => {
-                      await createBrowserClient().auth.signInWithOAuth({ provider: 'google' });
-                    }, 200);
-                  } catch (err) {
-                    setErrorMessage("Erreur lors de l'inscription avec Google");
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
-                disabled={isLoading}
+                onClick={() => signIn('google')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="mr-2" height="18" viewBox="0 0 24 24" width="18">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
