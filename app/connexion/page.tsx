@@ -115,17 +115,6 @@ export default function LoginPage() {
     }
   }
 
-  useEffect(() => {
-    // Déconnexion automatique à l'arrivée sur la page si une session existe
-    supabase.auth.getUser().then(async ({ data, error }) => {
-      if (data?.user) {
-        await supabase.auth.signOut();
-        // On reload la page pour être sûr d'être déconnecté
-        window.location.reload();
-      }
-    });
-  }, []);
-
   // Après un flow Google, appliquer la logique de redirection/message d'erreur
   useEffect(() => {
     // On ne fait la vérification que si on vient d'un flow OAuth (présence du paramètre "code" dans l'URL)
@@ -282,7 +271,9 @@ export default function LoginPage() {
                     setIsLoading(true);
                     try {
                       await supabase.auth.signOut();
-                      await supabase.auth.signInWithOAuth({ provider: 'google' });
+                      setTimeout(async () => {
+                        await supabase.auth.signInWithOAuth({ provider: 'google' });
+                      }, 200);
                     } catch (err) {
                       setErrorMessage("Erreur lors de la connexion avec Google");
                     } finally {

@@ -138,10 +138,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         sessionStorage.clear();
       }
       setUser(null)
-      router.replace("/")
+      if (typeof window !== 'undefined') {
+        window.location.href = "/";
+      }
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error)
-      router.replace("/")
+      // SUPPRIMER router.replace("/")
     }
   }
 

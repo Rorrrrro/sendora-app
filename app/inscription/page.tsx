@@ -161,16 +161,6 @@ function SignupContent() {
     fetchInvitation()
   }, [invitationToken])
 
-  useEffect(() => {
-    // Déconnexion automatique à l'arrivée sur la page si une session existe
-    createBrowserClient().auth.getUser().then(async ({ data, error }) => {
-      if (data?.user) {
-        await createBrowserClient().auth.signOut();
-        window.location.reload();
-      }
-    });
-  }, []);
-
   // Après un flow Google, appliquer la logique de redirection/message d'erreur
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
@@ -323,7 +313,9 @@ function SignupContent() {
                   setIsLoading(true);
                   try {
                     await createBrowserClient().auth.signOut();
-                    await createBrowserClient().auth.signInWithOAuth({ provider: 'google' });
+                    setTimeout(async () => {
+                      await createBrowserClient().auth.signInWithOAuth({ provider: 'google' });
+                    }, 200);
                   } catch (err) {
                     setErrorMessage("Erreur lors de l'inscription avec Google");
                   } finally {
