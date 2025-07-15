@@ -21,19 +21,18 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn(params: { user: User | AdapterUser; account: Account | null; profile?: Profile; email?: { verificationRequest?: boolean }; credentials?: Record<string, unknown> }) {
-      const email = params.user.email as string
-      // Connexion stricte : on ne crée jamais d'utilisateur ici
-      const { data: existingUser } = await supabaseAdmin
+      const email = (params.user.email as string).toLowerCase();
+      console.log('EMAIL GOOGLE:', email);
+      const { data: existingUser, error } = await supabaseAdmin
         .from('auth.users')
-        .select('id')
+        .select('id, email')
         .eq('email', email)
-        .single()
+        .single();
+      console.log('USER FOUND:', existingUser, 'ERROR:', error);
       if (existingUser) {
-        // Connexion : OK, l'utilisateur existe
-        return true
+        return true;
       } else {
-        // Connexion : utilisateur non trouvé
-        return "/connexion?error=notfound"
+        return "/connexion?error=notfound";
       }
     },
     async jwt({ token, user }: { token: JWT, user?: User | AdapterUser }) {
