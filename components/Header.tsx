@@ -6,7 +6,14 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <img src="/Sendora.png" alt="Sendora Logo" className="h-20 w-auto object-contain" />
+            <Link href="/">
+              <img
+                src="/Sendora blanc.png"
+                alt="Sendora Logo"
+                className="max-h-10 md:max-h-12 lg:max-h-14 w-auto max-w-[100px] md:max-w-[120px] lg:max-w-[140px] object-contain transition-all"
+                style={{ display: 'block' }}
+              />
+            </Link>
           </div>
           <nav className="hidden md:flex space-x-8">
             <a href="#features" className="text-gray-300 hover:text-white">

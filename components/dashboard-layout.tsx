@@ -98,8 +98,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-[#f4f4fd]">
           <div className="flex h-16 items-center justify-between border-b border-[#EBE0FF] px-4">
             <div className="flex items-center">
-              <div className="h-full w-full flex justify-center items-center pt-3">
-                <img src="/Sendora.png" alt="Sendora Logo" className="h-auto w-48 object-contain" />
+              <div className="h-16 w-full flex justify-center items-center ml-4">
+                <img src="/Sendora.png" alt="Sendora Logo" className="h-11 w-auto object-contain" />
               </div>
             </div>
             <button onClick={() => setSidebarOpen(false)}>
@@ -136,8 +136,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex min-h-0 flex-1 flex-col bg-[#f4f4fd]">
             <div className="flex h-16 flex-shrink-0 items-center border-b border-[#EBE0FF] px-4">
               <div className="flex items-center">
-                <div className="h-full w-full flex justify-center items-center pt-3">
-                  <img src="/Sendora.png" alt="Sendora Logo" className="h-auto w-48 object-contain" />
+                <div className="h-16 w-full flex justify-center items-center ml-4">
+                  <img src="/Sendora.png" alt="Sendora Logo" className="h-11 w-auto object-contain" />
                 </div>
               </div>
             </div>

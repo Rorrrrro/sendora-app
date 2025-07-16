@@ -173,10 +173,7 @@ function SignupContent() {
       {/* Left side - Logo and branding */}
       <div className="hidden w-1/2 bg-primary/10 lg:block">
         <div className="flex h-full flex-col items-center justify-center p-12">
-          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-[#FFFEFF] shadow-md">
-            <img src="/Sendora.png" alt="Sendora Logo" className="h-24 w-auto" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900">Sendora</h1>
+          <img src="/Sendora.png" alt="Sendora Logo" className="mb-8 h-24 w-auto" />
           <p className="mt-2 text-center text-lg text-gray-600">
             Rejoignez des milliers d&apos;utilisateurs et lancez vos campagnes email dès aujourd&apos;hui
           </p>
@@ -184,13 +181,13 @@ function SignupContent() {
       </div>
 
       {/* Right side - Signup form */}
-      <div className="flex w-full flex-col justify-center p-8 lg:w-1/2">
+      <div className="flex w-full flex-col p-8 pt-16 lg:w-1/2">
         {/* Mobile logo */}
         <div className="mb-10 flex flex-col items-center lg:hidden">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 shadow-md">
-            <img src="/Sendora.png" alt="Sendora Logo" className="h-20 w-auto" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Sendora</h1>
+          <img src="/Sendora.png" alt="Sendora Logo" className="mb-4 h-20 w-auto" />
+          <p className="text-center text-base text-gray-600">
+            Rejoignez des milliers d&apos;utilisateurs et lancez vos campagnes email dès aujourd&apos;hui
+          </p>
         </div>
 
         <div className="mx-auto w-full max-w-md">

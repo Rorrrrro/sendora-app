@@ -85,8 +85,25 @@ function ContactsTable({
   const someFilteredSelected = filteredContacts.some(contact => selectedContacts.has(contact.id))
   const selectedCount = selectedContacts.size
 
+  // Affichage des boutons d'action si au moins un contact est sélectionné
+  const showActions = selectedCount > 0;
+
   return (
     <div className="relative">
+      {showActions && (
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <Button size="sm" variant="outline" onClick={onBulkAddToList}>
+            <UserPlus className="w-4 h-4 mr-2" /> Ajouter à une liste
+          </Button>
+          <Button size="sm" variant="outline" onClick={onBulkRemoveFromList}>
+            <UserMinus className="w-4 h-4 mr-2" /> Enlever d'une liste
+          </Button>
+          <Button size="sm" variant="destructive" onClick={onBulkDelete} className="bg-[#d21c3c] hover:bg-[#b81a34] text-white font-semibold rounded-md">
+            <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+          </Button>
+          <span className="ml-2 text-sm text-muted-foreground">{selectedCount} sélectionné{selectedCount > 1 ? 's' : ''}</span>
+        </div>
+      )}
       {showSpinner ? (
         <TableSkeleton columns={5} rows={6} />
       ) : (
