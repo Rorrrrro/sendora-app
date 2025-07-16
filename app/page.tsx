@@ -422,14 +422,14 @@ export default function Home() {
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white">
-                    Centre d&apos;aide
-                  </a>
+                  <Link href="/conditions" className="text-gray-400 hover:text-white">
+                    Conditions générales
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white">
-                    Conditions et confidentialité
-                  </a>
+                  <Link href="/confidentialite" className="text-gray-400 hover:text-white">
+                    Politique de confidentialité
+                  </Link>
                 </li>
               </ul>
             </div>
