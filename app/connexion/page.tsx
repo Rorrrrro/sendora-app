@@ -299,7 +299,7 @@ export default function LoginPage() {
             )}
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-gray-600">Vous n&apos;avez pas de compte?</span>{" "}
+              <span className="text-gray-600">Vous n&apos;avez pas de compte ?</span>{" "}
               <Link href="/inscription" className="underline text-[#6c43e0] hover:text-[#4f32a7] font-semibold text-sm">
                 S'inscrire
               </Link>

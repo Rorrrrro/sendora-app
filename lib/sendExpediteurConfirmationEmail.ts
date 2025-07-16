@@ -6,7 +6,7 @@ export async function sendExpediteurConfirmationEmail(expediteur: {
   token: string;
 }) {
   const transporter = nodemailer.createTransport({
-    host: 'email-smtp.eu-west-3.amazonaws.com', // adapte la région si besoin
+    host: 'email-smtp.eu-west-1.amazonaws.com', // région mise à jour pour eu-west-1
     port: 587,
     secure: false, // TLS (STARTTLS)
     auth: {
