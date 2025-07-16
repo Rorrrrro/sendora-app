@@ -66,7 +66,7 @@ git push
 
 Illustration : https://storyset.com
 
-Utilisateurs
+Dans la table Utilisateurs de Supabase
 
 id : identifiant unique de chaque compte.
 
@@ -76,4 +76,3 @@ NULL → compte principal.
 
 UUID d’un autre utilisateur → compte invité, rattaché au parent qui a invité.
 
-salut cava

@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/dashboard-layout";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useUser } from "@/contexts/user-context";
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { createBrowserClient } from '@/lib/supabase';
 
 export default function CreateCampaignPage() {
   const [campaignName, setCampaignName] = useState('');
@@ -18,17 +19,48 @@ export default function CreateCampaignPage() {
   const [senderValidated, setSenderValidated] = useState(false);
   const router = useRouter();
   const { user } = useUser();
+  const [expediteurs, setExpediteurs] = useState<{ id: string; email: string; nom: string; statut_domaine?: string }[]>([]);
+  const [senderEmail, setSenderEmail] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [senderDomaineStatus, setSenderDomaineStatus] = useState<string | undefined>(undefined);
 
-  const [senderName, setSenderName] = useState(user?.entreprise || '');
-  const [senderEmail, setSenderEmail] = useState(user?.email || '');
-
-  // Mettre à jour les valeurs quand l'utilisateur est chargé
+  // Récupérer les expéditeurs vérifiés de la famille
   useEffect(() => {
-    if (user) {
-      setSenderName(user.entreprise || '');
-      setSenderEmail(user.email || '');
-    }
+    const fetchExpediteurs = async () => {
+      if (!user) return;
+      const supabase = createBrowserClient();
+      const { data, error } = await supabase
+        .from('Expediteurs')
+        .select('id, email, nom, statut, statut_domaine')
+        .eq('statut', 'Vérifié')
+        .order('email', { ascending: true });
+      if (!error && data) {
+        setExpediteurs(data);
+      }
+    };
+    fetchExpediteurs();
   }, [user]);
+
+  // Mettre à jour les valeurs quand les expéditeurs sont chargés ou changent
+  useEffect(() => {
+    if (expediteurs.length > 0) {
+      setSenderEmail(expediteurs[0].email);
+      setSenderName(expediteurs[0].nom || '');
+      setSenderDomaineStatus(expediteurs[0].statut_domaine);
+    } else {
+      setSenderEmail('');
+      setSenderName('');
+      setSenderDomaineStatus(undefined);
+    }
+  }, [expediteurs]);
+
+  // Quand on change d'email expéditeur, mettre à jour le nom et le statut_domaine associés
+  const handleSenderEmailChange = (email: string) => {
+    setSenderEmail(email);
+    const exp = expediteurs.find(e => e.email === email);
+    setSenderName(exp?.nom || '');
+    setSenderDomaineStatus(exp?.statut_domaine);
+  };
 
   const handleSectionClick = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -150,14 +182,19 @@ export default function CreateCampaignPage() {
                                   </PopoverContent>
                                 </Popover>
                             </div>
-                              <Select value={senderEmail} onValueChange={setSenderEmail}>
+                              <Select value={senderEmail} onValueChange={handleSenderEmailChange}>
                                 <SelectTrigger className="w-full max-w-lg border-[#e0e0e0]">
                                 <SelectValue placeholder="Sélectionner une adresse" />
                               </SelectTrigger>
                               <SelectContent>
-                                  {user?.email && user.email !== '' && (
-                                    <SelectItem value={user.email}>{user.email}</SelectItem>
-                                  )}
+                                {expediteurs.length === 0 && (
+                                  <div className="px-4 py-2 text-muted-foreground text-sm">Aucun expéditeur vérifié</div>
+                                )}
+                                {expediteurs.map((exp) => (
+                                  <SelectItem key={exp.id} value={exp.email}>
+                                    {exp.email} {exp.nom ? <span className="text-xs text-gray-400 ml-2">({exp.nom})</span> : null}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -184,23 +221,25 @@ export default function CreateCampaignPage() {
                             </div>
 
                             {/* Alerte domaine non authentifié */}
-                            <div className="flex items-center gap-4 bg-[#f4f3fd] border border-[#e5e1fa] rounded-lg px-4 py-3 mb-6 max-w-lg">
-                              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#6c43e0] bg-opacity-10 -ml-2">
-                                <svg width="36" height="36" fill="none" viewBox="0 0 36 36">
-                                  <circle cx="18" cy="18" r="15" fill="#6c43e0" fillOpacity="0.18"/>
-                                  <path d="M18 11v10" stroke="#6c43e0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                                  <circle cx="18" cy="26" r="2" fill="#6c43e0"/>
-                                </svg>
-                              </span>
-                              <div className="flex-1 pl-0">
-                                <div className="font-bold text-base text-[#2d1863] mb-1">Votre domaine n'est pas authentifié</div>
-                                <div className="text-sm text-[#3d247a]">
-                                  Pour envoyer des emails avec votre adresse, vous devez <a href="#" className="underline text-[#6c43e0] hover:text-[#4f32a7]">authentifier votre domaine</a>.
-                                  <br /><span className="block mt-2"></span>
-                                  Sinon, vos emails seront envoyés via <span className="font-semibold">campagnes@sendora.fr</span>
+                            {senderDomaineStatus !== 'Authentifié' && senderEmail && (
+                              <div className="flex items-center gap-4 bg-[#f4f3fd] border border-[#e5e1fa] rounded-lg px-4 py-3 mb-6 max-w-lg">
+                                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#6c43e0] bg-opacity-10 -ml-2">
+                                  <svg width="36" height="36" fill="none" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="15" fill="#6c43e0" fillOpacity="0.18"/>
+                                    <path d="M18 11v10" stroke="#6c43e0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <circle cx="18" cy="26" r="2" fill="#6c43e0"/>
+                                  </svg>
+                                </span>
+                                <div className="flex-1 pl-0">
+                                  <div className="font-bold text-base text-[#2d1863] mb-1">Votre domaine n'est pas authentifié</div>
+                                  <div className="text-sm text-[#3d247a]">
+                                    Pour envoyer des emails avec votre adresse, vous devez <a href="#" className="underline text-[#6c43e0] hover:text-[#4f32a7]">authentifier votre domaine</a>.
+                                    <br /><span className="block mt-2"></span>
+                                    Sinon, vos emails seront envoyés via <span className="font-semibold">campagnes@sendora.fr</span>
+                                  </div>
                                 </div>
                               </div>
-                          </div>
+                            )}
 
                             <div className="flex justify-center gap-3 mt-8">
                             <Button 
