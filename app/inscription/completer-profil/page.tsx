@@ -141,6 +141,7 @@ function CompleteProfileForm() {
         },
         body: JSON.stringify({
           record: {
+            id: user.id, // <-- Ajout de l'UUID utilisateur
             prenom: formData.prenom.trim(),
             nom: formData.nom.trim(),
             entreprise: formData.entreprise.trim(),
