@@ -132,6 +132,26 @@ function CompleteProfileForm() {
 
       // Rafraîchir les données utilisateur dans le contexte
       await refreshUserData();
+
+      // Appel à la Edge Function pour synchroniser avec Sendy
+      console.log("Avant fetch Sendy");
+      const response = await fetch('https://fvcizjozjtleryioqmwb.supabase.co/functions/v1/sync-sendy-brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          record: {
+            prenom: formData.prenom.trim(),
+            nom: formData.nom.trim(),
+            entreprise: formData.entreprise.trim(),
+            email: user.email
+            // Ajoute ici d'autres champs si besoin
+          }
+        })
+      });
+      console.log("Après fetch Sendy");
+      const result = await response.text();
+      console.log('Réponse Edge Function Sendy:', result);
+
       window.location.href = "/accueil";
     } catch (err) {
       console.error("Erreur inattendue :", err);
