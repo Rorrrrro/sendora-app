@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 interface Liste {
   id: string
@@ -36,6 +37,7 @@ interface Liste {
   nb_contacts: number
   created_at: string
   user_id: string
+  sendy_list_id?: string // Ajouté pour la synchro Sendy
 }
 
 export default function ListesPage() {
@@ -73,7 +75,7 @@ export default function ListesPage() {
     try {
       const { data, error } = await createBrowserClient()
         .from("Listes")
-        .select("id, nom, description, nb_contacts, created_at, user_id")
+        .select("id, nom, description, nb_contacts, created_at, user_id, sendy_list_id")
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false })
 
@@ -329,6 +331,18 @@ export default function ListesPage() {
             // Met à jour la liste dans la base de données
             const supabase = createBrowserClient();
             await supabase.from("Listes").update({ nom: data.nom, description: data.description }).eq("id", listeToEdit.id);
+            // Appel Edge Function pour Sendy
+            if (listeToEdit.sendy_list_id) {
+              try {
+                await callSendyEdgeFunction("sync-sendy-lists-update", {
+                  id: listeToEdit.id,
+                  nom: data.nom,
+                  sendy_list_id: listeToEdit.sendy_list_id
+                });
+              } catch (err) {
+                console.error("Erreur synchro Sendy:", err);
+              }
+            }
             setEditSidebarOpen(false);
             setListeToEdit(null);
             await fetchListes();

@@ -11,6 +11,7 @@ import { PlusCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
 import { Skeleton } from "@/components/ui/skeleton"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 interface Liste {
   id: string
@@ -156,22 +157,13 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
             sendy_brand_id = userData.sendy_brand_id;
           }
         }
-        // === Appel Edge Function pour créer la liste dans Sendy ===
+        // === Appel Edge Function pour créer la liste dans Sendy (factorisé) ===
         if (sendy_brand_id) {
           try {
-            await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sync-sendy-lists`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-              },
-              body: JSON.stringify({
-                record: {
-                  id: data[0].id,
-                  nom: data[0].nom,
-                  sendy_brand_id
-                }
-              })
+            await callSendyEdgeFunction("sync-sendy-lists", {
+              id: data[0].id,
+              nom: data[0].nom,
+              sendy_brand_id
             });
           } catch (err) {
             console.error("Erreur lors de la synchro Sendy :", err);

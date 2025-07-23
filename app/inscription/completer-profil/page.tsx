@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
 import ClientOnly from "@/components/ClientOnly"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 // Initialiser le client Supabase tout en haut du module
 const supabase = createBrowserClient();
@@ -133,26 +134,14 @@ function CompleteProfileForm() {
       // Rafraîchir les données utilisateur dans le contexte
       await refreshUserData();
 
-      const response = await fetch('https://fvcizjojzlteryioqmwb.supabase.co/functions/v1/sync-sendy-brand', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          record: {
-            id: user.id, // <-- Ajout de l'UUID utilisateur
-            prenom: formData.prenom.trim(),
-            nom: formData.nom.trim(),
-            entreprise: formData.entreprise.trim(),
-            email: user.email
-            // autres champs si besoin
-          }
-        })
+      // Appel Edge Function Sendy factorisé
+      await callSendyEdgeFunction("sync-sendy-brand", {
+        id: user.id,
+        prenom: formData.prenom.trim(),
+        nom: formData.nom.trim(),
+        entreprise: formData.entreprise.trim(),
+        email: user.email
       });
-      console.log("Après fetch Sendy");
-      const result = await response.text();
-      console.log('Réponse Edge Function Sendy:', result);
 
       window.location.href = "/accueil";
     } catch (err) {

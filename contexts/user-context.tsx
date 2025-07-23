@@ -11,6 +11,7 @@ type UserInfo = {
   prenom: string
   nom: string
   entreprise: string
+  sendy_brand_id?: string // Ajouté pour accès dans le profil
 }
 
 type UserContextType = {
@@ -85,7 +86,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Récupérer les données utilisateur de Supabase
       const { data: userData, error: userError } = await supabase
         .from("Utilisateurs")
-        .select("prenom, nom, entreprise")
+        .select("prenom, nom, entreprise, sendy_brand_id") // Ajout sendy_brand_id
         .eq("id", userId)
         .single()
       if (userError && userError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -110,7 +111,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         email: userEmail,
         prenom: userData.prenom,
         nom: userData.nom,
-        entreprise: userData.entreprise
+        entreprise: userData.entreprise,
+        sendy_brand_id: userData.sendy_brand_id // Ajouté
       })
     } catch (error) {
       console.error("Erreur dans refreshUserData:", error)

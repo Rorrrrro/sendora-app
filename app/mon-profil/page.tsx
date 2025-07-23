@@ -14,6 +14,7 @@ import { useUser } from "@/contexts/user-context"
 import { createBrowserClient } from "@/lib/supabase"
 import { Eye, EyeOff } from "lucide-react"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 // Palette de couleurs pastel claires pour les avatars
 const avatarColors = [
@@ -89,7 +90,7 @@ export default function MonProfilPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!user) return
 
@@ -113,6 +114,19 @@ export default function MonProfilPage() {
 
       // Refresh user data in context
       await refreshUserData()
+
+      // === Appel Edge Function pour synchro Sendy (utilitaire factorisé) ===
+      try {
+        await callSendyEdgeFunction("sync-sendy-brand-update", {
+          id: user.id,
+          prenom: formData.prenom.trim(),
+          nom: formData.nom.trim(),
+          entreprise: formData.entreprise.trim()
+        });
+      } catch (err) {
+        console.error("Erreur dans callSendyEdgeFunction :", err);
+      }
+      // === FIN AJOUT ===
 
       setUpdateMessage({
         type: "success",

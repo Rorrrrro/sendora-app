@@ -9,6 +9,7 @@ import { createBrowserClient } from "@/lib/supabase"
 import { useUser } from "@/contexts/user-context"
 import { toast } from "sonner"
 import { X } from "lucide-react"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 interface CreateListSidebarProps {
   isOpen: boolean
@@ -55,19 +56,10 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
 
       // 3. Appelle la Edge Function pour créer la liste dans Sendy
       if (insertedList && sendy_brand_id) {
-        await fetch('https://fvcizjojzlteryioqmwb.supabase.co/functions/v1/sync-sendy-lists', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            record: {
-              id: insertedList.id,
-              nom: insertedList.nom,
-              sendy_brand_id
-            }
-          })
+        await callSendyEdgeFunction("sync-sendy-lists", {
+          id: insertedList.id,
+          nom: insertedList.nom,
+          sendy_brand_id
         });
       }
 
