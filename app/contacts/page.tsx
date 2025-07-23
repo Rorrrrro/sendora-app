@@ -92,10 +92,18 @@ function ContactsTable({
     <div className="relative">
       {showActions && (
         <div className="flex flex-wrap gap-2 mb-4 items-center">
-          <Button size="sm" variant="outline" onClick={onBulkAddToList}>
+          <Button
+            size="sm"
+            className="bg-[#fffeff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-6 shadow-none transition flex items-center gap-2"
+            onClick={onBulkAddToList}
+          >
             <UserPlus className="w-4 h-4 mr-2" /> Ajouter à une liste
           </Button>
-          <Button size="sm" variant="outline" onClick={onBulkRemoveFromList}>
+          <Button
+            size="sm"
+            className="bg-[#fffeff] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-6 shadow-none transition flex items-center gap-2"
+            onClick={onBulkRemoveFromList}
+          >
             <UserMinus className="w-4 h-4 mr-2" /> Enlever d'une liste
           </Button>
           <Button size="sm" variant="destructive" onClick={onBulkDelete} className="bg-[#d21c3c] hover:bg-[#b81a34] text-white font-semibold rounded-md">

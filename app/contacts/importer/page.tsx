@@ -42,6 +42,19 @@ export default function ImportContactsPage() {
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [createListSidebarOpen, setCreateListSidebarOpen] = useState(false);
   const [optInConfirmed, setOptInConfirmed] = useState(false);
+  const [newCustomFields, setNewCustomFields] = useState<{ [header: string]: string }>({});
+  const [showNewFieldInput, setShowNewFieldInput] = useState<{ [header: string]: boolean }>({});
+  const [newCustomFieldType, setNewCustomFieldType] = useState<{ [header: string]: string }>({});
+  const [contactAttributes, setContactAttributes] = useState<{ value: string, label: string }[]>([
+    { value: 'ignore', label: 'Ne pas importer' },
+    { value: 'prenom', label: 'Prénom' },
+    { value: 'nom', label: 'Nom' },
+    { value: 'email', label: 'Email' },
+    { value: 'entreprise', label: 'Entreprise' },
+    { value: 'telephone', label: 'Téléphone' },
+    { value: 'divider', label: 'divider' },
+    { value: 'new', label: 'Ajouter un nouvel attribut' }
+  ]);
 
   useEffect(() => {
     if (!mappingError) return;
@@ -65,16 +78,6 @@ export default function ImportContactsPage() {
   const mappedAttributes = Object.values(columnMapping);
   const mappedCount = mappedAttributes.filter(attr => attr !== 'ignore').length;
   const ignoredCount = mappedAttributes.length - mappedCount;
-
-  const contactAttributes = [
-    { value: 'ignore', label: 'Ne pas importer' },
-    { value: 'prenom', label: 'Prénom' },
-    { value: 'nom', label: 'Nom' },
-    { value: 'email', label: 'Email' },
-    { value: 'entreprise', label: 'Entreprise' },
-    { value: 'telephone', label: 'Téléphone' },
-    // Ajoute ici d'autres attributs si besoin
-  ]
 
   const handleValidateMapping = () => {
     setMappingError(null);
@@ -329,7 +332,11 @@ export default function ImportContactsPage() {
           };
           headers.forEach((header: string, index: number) => {
             const attribute = columnMapping[header];
-            if (attribute && attribute !== 'ignore') {
+            if (
+              attribute &&
+              attribute !== 'ignore' &&
+              realContactColumns.includes(attribute)
+            ) {
               contact[attribute] = row[index] ? row[index].toString().trim() : null;
             }
           });
@@ -380,6 +387,39 @@ export default function ImportContactsPage() {
         throw new Error(`Les contacts ont été créés, mais une erreur est survenue lors de leur ajout aux listes: ${linkError.message}`);
       }
 
+      // Après l'insertion des contacts et avant router.push
+      // 1. Récupère tous les champs personnalisés de l'utilisateur
+      const { data: customFieldsList, error: customFieldsError } = await supabase
+        .from('Contact_custom_fields')
+        .select('id, name')
+        .eq('userID', user.id);
+      if (customFieldsError) {
+        setError("Erreur lors de la récupération des champs personnalisés : " + customFieldsError.message);
+        setIsLoading(false);
+        return;
+      }
+      // 2. Pour chaque contact inséré, ajoute les valeurs custom
+      for (let i = 0; i < insertedContacts.length; i++) {
+        const contactId = insertedContacts[i].id;
+        const row = dataRows[i];
+        for (let h = 0; h < headers.length; h++) {
+          const header = headers[h];
+          const attribute = columnMapping[header];
+          // Si c'est un champ custom (présent dans customFieldsList)
+          const customField = customFieldsList.find(f => f.name === attribute);
+          if (customField) {
+            const value = row[h] ? row[h].toString().trim() : null;
+            if (value) {
+              await supabase.from('Contact_custom_values').insert([{
+                contact_id: contactId,
+                custom_field_id: customField.id,
+                value
+              }]);
+            }
+          }
+        }
+      }
+
       router.push("/contacts?import_success=true");
 
     } catch (err: any) {
@@ -389,6 +429,28 @@ export default function ImportContactsPage() {
       setIsLoading(false);
     }
   };
+
+  const realContactColumns = ['id', 'prenom', 'nom', 'email', 'entreprise', 'telephone', 'created_at', 'userID'];
+
+  const baseAttributes = [
+    { value: 'prenom', label: 'Prénom' },
+    { value: 'nom', label: 'Nom' },
+    { value: 'email', label: 'Email' },
+    { value: 'entreprise', label: 'Entreprise' },
+    { value: 'telephone', label: 'Téléphone' }
+  ];
+  const baseKeys = baseAttributes.map(attr => attr.value.toLowerCase());
+  const customAttributes = contactAttributes.filter(attr =>
+    !baseKeys.includes(attr.value.toLowerCase()) &&
+    !['ignore', 'divider', 'new'].includes(attr.value)
+  );
+  const safeContactAttributes = [
+    { value: 'ignore', label: 'Ne pas importer' },
+    ...baseAttributes,
+    ...customAttributes,
+    { value: 'divider', label: 'divider' },
+    { value: 'new', label: 'Ajouter un nouvel attribut' }
+  ];
 
   return (
     <AppLayout>
@@ -581,21 +643,122 @@ export default function ImportContactsPage() {
                               ))}
                             </td>
                             <td className="px-6 py-4">
-                               <Select
-                                value={columnMapping[header]}
-                                onValueChange={(value) => {
-                                  setColumnMapping({ ...columnMapping, [header]: value })
-                                }}
-                              >
-                                <SelectTrigger className="w-[220px] bg-[#FFFEFF]">
-                                  <SelectValue placeholder="Sélectionner une valeur" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {contactAttributes.map((attr) => (
-                                    <SelectItem key={attr.value} value={attr.value}>{attr.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {showNewFieldInput[header] ? (
+                                <div className="flex items-center gap-4">
+                                  <div className="flex flex-col gap-1">
+                                    <input
+                                      type="text"
+                                      autoComplete="off"
+                                      style={{ borderColor: '#e0e0e0', transition: 'border-color 0.2s', borderWidth: 1, borderStyle: 'solid', boxShadow: 'none', outline: 'none', border: '1px solid #e0e0e0 !important' }}
+                                      className="border rounded px-2 h-9 py-1 text-sm w-[180px] focus:!border-[#6c43e0] hover:!border-[#6c43e0] !border-[#e0e0e0] outline-none"
+                                      placeholder="Nom du nouvel attribut"
+                                      value={newCustomFields[header] || ""}
+                                      onChange={e => {
+                                        setNewCustomFields({ ...newCustomFields, [header]: e.target.value });
+                                      }}
+                                    />
+                                    <div className="mt-1">
+                                      <Select
+                                        value={newCustomFieldType[header] || "text"}
+                                        onValueChange={value => setNewCustomFieldType({ ...newCustomFieldType, [header]: value })}
+                                      >
+                                        <SelectTrigger className="w-[180px] h-9 bg-[#FFFEFF] min-h-0 py-1 text-sm">
+                                          <SelectValue placeholder="Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="text" className="!text-[#3C2479] hover:!text-[#3C2479] focus:!text-[#3C2479]">Texte</SelectItem>
+                                          <SelectItem value="number" className="!text-[#3C2479] hover:!text-[#3C2479] focus:!text-[#3C2479]">Nombre</SelectItem>
+                                          <SelectItem value="date" className="!text-[#3C2479] hover:!text-[#3C2479] focus:!text-[#3C2479]">Date</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2 ml-2">
+                                    <Button
+                                      size="sm"
+                                      style={{ backgroundColor: '#6c43e0', color: '#fff', border: 'none' }}
+                                      className="hover:!bg-[#4f32a7] focus:!bg-[#4f32a7] !text-white"
+                                      onClick={async () => {
+                                        if (!user || !newCustomFields[header]) return;
+                                        const typeToStore = (newCustomFieldType[header] === 'date') ? 'Date' : 'Text';
+                                        // Ajout dans Supabase
+                                        const { data, error } = await supabase
+                                          .from('Contact_custom_fields')
+                                          .insert([{
+                                            name: newCustomFields[header],
+                                            type: typeToStore,
+                                            userID: user.id
+                                          }])
+                                          .select();
+                                        if (error) {
+                                          alert("Erreur lors de l'ajout du champ personnalisé : " + error.message);
+                                          return;
+                                        }
+                                        // Recharge tous les attributs personnalisés de l'utilisateur
+                                        const { data: customFields, error: fetchError } = await supabase
+                                          .from('Contact_custom_fields')
+                                          .select('name')
+                                          .eq('userID', user.id);
+                                        if (!fetchError && customFields) {
+                                          setContactAttributes([
+                                            { value: 'ignore', label: 'Ne pas importer' },
+                                            { value: 'prenom', label: 'Prénom' },
+                                            { value: 'nom', label: 'Nom' },
+                                            { value: 'email', label: 'Email' },
+                                            { value: 'entreprise', label: 'Entreprise' },
+                                            { value: 'telephone', label: 'Téléphone' },
+                                            ...customFields.map((f: { name: string }) => ({ value: f.name, label: f.name })),
+                                            { value: 'divider', label: 'divider' },
+                                            { value: 'new', label: 'Ajouter un nouvel attribut' }
+                                          ]);
+                                          setColumnMapping({ ...columnMapping, [header]: newCustomFields[header] });
+                                          setShowNewFieldInput({ ...showNewFieldInput, [header]: false });
+                                        }
+                                      }}
+                                      disabled={!newCustomFields[header]}
+                                    >
+                                      Ajouter
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      style={{ backgroundColor: '#fffeff', color: '#23272f', border: '1px solid #e0e0e0' }}
+                                      className="hover:!bg-[#fafbfc] hover:!border-[#bdbdbd] focus:!bg-[#fafbfc] focus:!border-[#bdbdbd] !text-[#23272f]"
+                                      onClick={() => {
+                                        setShowNewFieldInput({ ...showNewFieldInput, [header]: false });
+                                        setColumnMapping({ ...columnMapping, [header]: 'ignore' });
+                                      }}
+                                    >
+                                      Retour
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Select
+                                  value={columnMapping[header]}
+                                  onValueChange={(value) => {
+                                    setColumnMapping({ ...columnMapping, [header]: value });
+                                    setShowNewFieldInput({ ...showNewFieldInput, [header]: value === "new" });
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[220px] bg-[#FFFEFF]">
+                                    <SelectValue placeholder="Sélectionner une valeur" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {safeContactAttributes.map(attr =>
+                                      attr.value === 'divider'
+                                        ? <div key="divider" className="border-t my-1 border-gray-200" />
+                                        : <SelectItem
+                                            key={attr.value}
+                                            value={attr.value}
+                                            className="!text-[#3C2479] hover:!text-[#3C2479] focus:!text-[#3C2479]"
+                                          >
+                                            {attr.label}
+                                          </SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </td>
                           </tr>,
                           <tr key={`${header}-spacer`} className="h-6" />,

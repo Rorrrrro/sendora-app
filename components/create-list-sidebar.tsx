@@ -30,14 +30,46 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
 
     setLoading(true)
     try {
-      const { error } = await createBrowserClient().from("Listes").insert({
+      // 1. Crée la liste dans Supabase (sans sendy_brand_id)
+      const { data: insertedList, error } = await createBrowserClient().from("Listes").insert({
         nom: formData.nom,
         description: formData.description,
-          user_id: user.id,
-          nb_contacts: 0,
-      })
+        user_id: user.id,
+        nb_contacts: 0
+      }).select().single();
 
       if (error) throw error
+
+      // 2. Récupère le sendy_brand_id de l'utilisateur depuis la table Utilisateurs
+      let sendy_brand_id = null;
+      if (user.id) {
+        const { data: userData, error: userError } = await createBrowserClient()
+          .from("Utilisateurs")
+          .select("sendy_brand_id")
+          .eq("id", user.id)
+          .single();
+        if (userData && userData.sendy_brand_id) {
+          sendy_brand_id = userData.sendy_brand_id;
+        }
+      }
+
+      // 3. Appelle la Edge Function pour créer la liste dans Sendy
+      if (insertedList && sendy_brand_id) {
+        await fetch('https://fvcizjojzlteryioqmwb.supabase.co/functions/v1/sync-sendy-lists', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            record: {
+              id: insertedList.id,
+              nom: insertedList.nom,
+              sendy_brand_id
+            }
+          })
+        });
+      }
 
       toast.success("Liste créée avec succès")
       onListCreated()

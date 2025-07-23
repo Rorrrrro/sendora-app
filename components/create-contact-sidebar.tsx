@@ -143,6 +143,41 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         setSelectedListeId(data[0].id)
         setIsCreatingListe(false)
         setNewListeName("")
+
+        // === Récupère le sendy_brand_id de l'utilisateur (comme dans create-list-sidebar) ===
+        let sendy_brand_id = null;
+        if (user.id) {
+          const { data: userData, error: userError } = await createBrowserClient()
+            .from("Utilisateurs")
+            .select("sendy_brand_id")
+            .eq("id", user.id)
+            .single();
+          if (userData && userData.sendy_brand_id) {
+            sendy_brand_id = userData.sendy_brand_id;
+          }
+        }
+        // === Appel Edge Function pour créer la liste dans Sendy ===
+        if (sendy_brand_id) {
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sync-sendy-lists`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify({
+                record: {
+                  id: data[0].id,
+                  nom: data[0].nom,
+                  sendy_brand_id
+                }
+              })
+            });
+          } catch (err) {
+            console.error("Erreur lors de la synchro Sendy :", err);
+          }
+        }
+        // === FIN AJOUT ===
       }
     } catch (error) {
       console.error("Erreur:", error)
