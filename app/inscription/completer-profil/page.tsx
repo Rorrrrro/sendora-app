@@ -143,15 +143,16 @@ function CompleteProfileForm() {
         email: user.email
       });
 
-      // 1. Crée la ligne "Aucune liste" dans Supabase
-      const { data: insertedList, error: listError } = await supabase.from("Listes").insert({
-        nom: "Aucune liste",
-        user_id: user.id,
-        nb_contacts: 0
-      }).select().single();
-      if (listError) throw listError;
+      // Récupère la ligne "Aucune liste" créée automatiquement par le trigger
+      const { data: aucuneListe, error: listError } = await supabase
+        .from("Listes")
+        .select("id, nom")
+        .eq("user_id", user.id)
+        .eq("nom", "Aucune liste")
+        .single();
+      if (listError || !aucuneListe) throw listError || new Error("Aucune liste non trouvée");
 
-      // 2. Récupère le sendy_brand_id de l'utilisateur
+      // Récupère le sendy_brand_id de l'utilisateur
       let sendy_brand_id = null;
       if (user.id) {
         const { data: userData, error: userError } = await supabase
@@ -164,11 +165,11 @@ function CompleteProfileForm() {
         }
       }
 
-      // 3. Appelle la Edge Function pour créer la liste dans Sendy
-      if (insertedList && sendy_brand_id) {
+      // Appelle la Edge Function pour créer la liste dans Sendy
+      if (aucuneListe && sendy_brand_id) {
         await callSendyEdgeFunction("sync-sendy-lists", {
-          id: insertedList.id,
-          nom: insertedList.nom,
+          id: aucuneListe.id,
+          nom: aucuneListe.nom,
           sendy_brand_id
         });
       }
