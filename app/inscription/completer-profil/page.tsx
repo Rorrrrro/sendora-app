@@ -143,6 +143,36 @@ function CompleteProfileForm() {
         email: user.email
       });
 
+      // 1. Crée la ligne "Aucune liste" dans Supabase
+      const { data: insertedList, error: listError } = await supabase.from("Listes").insert({
+        nom: "Aucune liste",
+        user_id: user.id,
+        nb_contacts: 0
+      }).select().single();
+      if (listError) throw listError;
+
+      // 2. Récupère le sendy_brand_id de l'utilisateur
+      let sendy_brand_id = null;
+      if (user.id) {
+        const { data: userData, error: userError } = await supabase
+          .from("Utilisateurs")
+          .select("sendy_brand_id")
+          .eq("id", user.id)
+          .single();
+        if (userData && userData.sendy_brand_id) {
+          sendy_brand_id = userData.sendy_brand_id;
+        }
+      }
+
+      // 3. Appelle la Edge Function pour créer la liste dans Sendy
+      if (insertedList && sendy_brand_id) {
+        await callSendyEdgeFunction("sync-sendy-lists", {
+          id: insertedList.id,
+          nom: insertedList.nom,
+          sendy_brand_id
+        });
+      }
+
       window.location.href = "/accueil";
     } catch (err) {
       console.error("Erreur inattendue :", err);
@@ -170,12 +200,9 @@ function CompleteProfileForm() {
           {/* Left side - Logo and branding */}
           <div className="hidden w-1/2 bg-primary/10 lg:block">
             <div className="flex h-full flex-col items-center justify-center p-12">
-              <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-[#FFFEFF] shadow-md">
-                <img src="/Sendora.png" alt="Sendora Logo" className="h-24 w-auto" />
-              </div>
-              <h1 className="text-4xl font-bold text-gray-900">Sendora</h1>
+              <img src="/Sendora.png" alt="Sendora Logo" className="mb-8 h-24 w-auto" />
               <p className="mt-2 text-center text-lg text-gray-600">
-                Plus qu&apos;une étape pour commencer à utiliser Sendora
+                Plus qu'une étape pour commencer à utiliser Sendora et profiter de toutes ses fonctionnalités.
               </p>
             </div>
           </div>
@@ -184,10 +211,7 @@ function CompleteProfileForm() {
           <div className="flex w-full flex-col justify-center p-8 lg:w-1/2">
             {/* Mobile logo */}
             <div className="mb-10 flex flex-col items-center lg:hidden">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 shadow-md">
-                <img src="/Sendora.png" alt="Sendora Logo" className="h-20 w-auto" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900">Sendora</h1>
+              <img src="/Sendora.png" alt="Sendora Logo" className="mb-4 h-20 w-auto" />
             </div>
 
             <div className="mx-auto w-full max-w-md">
