@@ -381,6 +381,17 @@ export default function ListesPage() {
                   await supabase.from("Listes_Contacts").delete().eq("liste_id", listeToDelete.id);
                   // Supprimer la liste
                   await supabase.from("Listes").delete().eq("id", listeToDelete.id).eq("user_id", user?.id);
+                  // Appel Edge Function pour suppression Sendy
+                  if (listeToDelete.sendy_list_id) {
+                    try {
+                      await callSendyEdgeFunction("sync-sendy-lists-delete", {
+                        id: listeToDelete.id,
+                        sendy_list_id: listeToDelete.sendy_list_id
+                      });
+                    } catch (err) {
+                      console.error("Erreur suppression Sendy:", err);
+                    }
+                  }
                   setShowDeleteDialog(false);
                   setListeToDelete(null);
                   fetchListes();
