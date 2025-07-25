@@ -24,11 +24,12 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
     nom: "",
     description: "",
   })
+  const [nameError, setNameError] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
+    setNameError("");
     setLoading(true)
     try {
       // 1. Crée la liste dans Supabase (sans sendy_brand_id)
@@ -39,7 +40,15 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
         nb_contacts: 0
       }).select().single();
 
-      if (error) throw error
+      if (error) {
+        if (error.code === '23505') {
+          toast.error("Vous avez déjà une liste avec ce nom.");
+          setNameError("Vous avez déjà une liste avec ce nom.");
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
 
       // 2. Récupère le sendy_brand_id de l'utilisateur depuis la table Utilisateurs
       let sendy_brand_id = null;
@@ -100,10 +109,14 @@ export function CreateListSidebar({ isOpen, onClose, onListCreated }: CreateList
                 name="nom"
                 placeholder="Ex: Newsletter mensuelle"
                 value={formData.nom}
-                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                className="mt-1"
+                onChange={e => {
+                  setFormData(f => ({ ...f, nom: e.target.value }));
+                  if (nameError) setNameError("");
+                }}
+                className={nameError ? "border-red-500 focus:ring-red-500" : ""}
                 required
               />
+              {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
             </div>
 
             <div>

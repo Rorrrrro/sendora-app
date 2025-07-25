@@ -91,13 +91,14 @@ export default function ListesPage() {
     }
   }
 
+  // Filtrer la "Aucune liste" partout où on affiche les listes
   const filteredListes = listes.filter(
     (liste) =>
       liste.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       liste.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  ).filter(liste => liste.nom !== 'Aucune liste');
 
-  const totalListes = filteredListes.length
+  const totalListes = filteredListes.length;
   const totalPages = Math.max(1, Math.ceil(totalListes / rowsPerPage))
   const paginatedListes = filteredListes.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
 
@@ -137,7 +138,7 @@ export default function ListesPage() {
                 {loading ? (
                   <span className="inline-block h-6 w-48 animate-pulse rounded bg-muted"></span>
                 ) : (
-                  `Vous avez ${listes.length} liste${listes.length > 1 ? "s" : ""}`
+                  `Vous avez ${totalListes} liste${totalListes > 1 ? "s" : ""}`
                 )}
               </span>
             </CardDescription>

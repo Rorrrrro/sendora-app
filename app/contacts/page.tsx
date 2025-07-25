@@ -35,6 +35,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { useSearchParams, useRouter } from "next/navigation"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
+import { callSendyEdgeFunction } from '@/lib/sendyEdge';
 
 interface Contact {
   id: string
@@ -122,10 +123,9 @@ function ContactsTable({
                 <tr className="border-b bg-muted/50 transition-colors">
                   <th className="h-12 px-4 align-middle font-medium text-muted-foreground w-[60px] text-center">
                     <Checkbox
-                      checked={false}
-                      onCheckedChange={() => {}}
+                      checked={allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false}
+                      onCheckedChange={handleSelectAll}
                       aria-label="Sélectionner tous les contacts"
-                      disabled
                     />
                   </th>
                   <th className="h-12 px-4 align-middle text-xs uppercase text-muted-foreground text-left">Prénom</th>
@@ -201,6 +201,7 @@ function ContactsContent() {
   const [isFirstFetchDone, setIsFirstFetchDone] = useState(false)
   const [hasAppliedInitialFilter, setHasAppliedInitialFilter] = useState(false)
   const router = useRouter()
+  const [addableLists, setAddableLists] = useState<{ id: number; nom: string }[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -239,8 +240,10 @@ function ContactsContent() {
               seen.add(row.liste_id);
             }
           }
-          setRemovableLists(uniqueLists)
-          setSelectedListsToRemove(uniqueLists.map(l => l.id))
+          // Filtrer la "Aucune liste" ici :
+          const filteredLists = uniqueLists.filter(l => l.nom !== 'Aucune liste');
+          setRemovableLists(filteredLists)
+          setSelectedListsToRemove(filteredLists.map(l => l.id))
         })
     } else if (!showRemoveFromListDialog) {
       setRemovableLists([])
@@ -248,33 +251,111 @@ function ContactsContent() {
     }
   }, [showRemoveFromListDialog, selectedContacts, user])
 
+  useEffect(() => {
+    if (!showAddToListDialog || selectedContacts.size === 0 || !user) {
+      setAddableLists([]);
+      return;
+    }
+    const supabase = createBrowserClient();
+    supabase
+      .from("Listes_Contacts")
+      .select("liste_id, contact_id")
+      .in("contact_id", Array.from(selectedContacts))
+      .then(({ data }) => {
+        if (!data) {
+          setAddableLists(listes.filter(l => l.nom !== 'Aucune liste'));
+          return;
+        }
+        const contactIds = Array.from(selectedContacts);
+        const listIdToCount: Record<number, number> = {};
+        data.forEach(row => {
+          if (row.liste_id) {
+            listIdToCount[row.liste_id] = (listIdToCount[row.liste_id] || 0) + 1;
+          }
+        });
+        if (contactIds.length === 1) {
+          const alreadyIn = new Set(data.map(row => row.liste_id));
+          setAddableLists(listes.filter(l => l.nom !== 'Aucune liste' && !alreadyIn.has(l.id)));
+        } else {
+          setAddableLists(listes.filter(l => {
+            if (l.nom === 'Aucune liste') return false;
+            return (listIdToCount[l.id] || 0) < contactIds.length;
+          }));
+        }
+      });
+  }, [showAddToListDialog, selectedContacts, listes, user]);
+
   const handleBulkDelete = async () => {
     if (!user || selectedContacts.size === 0) return
     setShowDeleteDialog(false)
     setLoading(true)
     const supabase = createBrowserClient()
     try {
+      // Pour chaque contact sélectionné, supprime-le aussi de Sendy
+      for (const contactId of Array.from(selectedContacts)) {
+        // 1. Récupère l'email du contact
+        const { data: contact } = await supabase
+          .from('Contacts')
+          .select('email')
+          .eq('id', contactId)
+          .single();
+        if (!contact?.email) continue;
+        // 2. Récupère toutes les listes auxquelles il appartient
+        const { data: listLinks } = await supabase
+          .from('Listes_Contacts')
+          .select('liste_id')
+          .eq('contact_id', contactId);
+        if (!listLinks || listLinks.length === 0) continue;
+        // 3. Récupère les sendy_list_id de ces listes
+        const listeIds = listLinks.map(l => l.liste_id);
+        const { data: listes } = await supabase
+          .from('Listes')
+          .select('sendy_list_id')
+          .in('id', listeIds);
+        const sendyListIds = (listes || []).map(l => l.sendy_list_id).filter(Boolean);
+        if (sendyListIds.length === 0) continue;
+        // 4. Appelle la Edge Function
+        try {
+          const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sync-sendy-contacts-delete`;
+          await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              record: {
+                email: contact.email,
+                sendy_list_ids: sendyListIds
+              }
+            })
+          });
+        } catch (err) {
+          console.error('Erreur suppression Sendy pour', contact.email, err);
+          // On continue la suppression Supabase même si Sendy échoue
+        }
+      }
+      // 1. Supprime toutes les liaisons dans Listes_Contacts pour les contacts sélectionnés
       await supabase
         .from("Listes_Contacts")
         .delete()
-        .in("contact_id", Array.from(selectedContacts))
+        .in("contact_id", Array.from(selectedContacts));
+      // 2. Supprime les contacts dans Contacts
       const { error } = await supabase
         .from("Contacts")
         .delete()
         .in("id", Array.from(selectedContacts))
-        .eq("userID", user.id)
+        .eq("userID", user.id);
       if (error) {
-        console.error("Erreur lors de la suppression:", error)
-        alert("Erreur lors de la suppression des contacts")
-      } else {
-        setSelectedContacts(new Set())
-        fetchContacts()
+        console.error("Erreur lors de la suppression:", error);
+        alert("Erreur lors de la suppression des contacts");
       }
+      setSelectedContacts(new Set());
+      fetchContacts();
     } catch (error) {
-      console.error("Erreur lors de la suppression:", error)
-      alert("Erreur lors de la suppression des contacts")
+      console.error("Erreur lors de la suppression:", error);
+      alert("Erreur lors de la suppression des contacts");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -706,7 +787,7 @@ function ContactsContent() {
                         ? `Sélectionnez la ou les listes auxquelles vous souhaitez ajouter les ${selectedContacts.size} contacts sélectionnés.`
                         : "Sélectionnez la ou les listes auxquelles vous souhaitez ajouter ce contact."}
                     </AlertDialogDescription>
-                    {listes.length === 0 ? (
+                    {addableLists.length === 0 ? (
                       <div className="text-muted-foreground text-sm">Aucune liste disponible.</div>
                     ) : (
                       <div className="w-full flex flex-col items-start gap-2 relative">
@@ -727,7 +808,6 @@ function ContactsContent() {
                         </button>
                         {popoverOpen && (
                           <>
-                            {/* Overlay pour fermer au clic extérieur */}
                             <div
                               className="fixed inset-0 z-30"
                               onClick={() => setPopoverOpen(false)}
@@ -738,7 +818,7 @@ function ContactsContent() {
                               style={{ minWidth: triggerRef.current ? triggerRef.current.offsetWidth : undefined }}
                             >
                               <div className="flex flex-col">
-                                {listes.map((list) => {
+                                {addableLists.map((list) => {
                                   const isSelected = selectedListsToAdd.includes(list.id);
                                   return (
                                     <label

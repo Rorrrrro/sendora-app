@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { CreateListSidebar } from "@/components/create-list-sidebar"
 import { Checkbox } from "@/components/ui/checkbox"
 import * as XLSX from "xlsx"
+import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
 export default function ImportContactsPage() {
   const { user } = useUser()
@@ -38,7 +39,7 @@ export default function ImportContactsPage() {
   const [step, setStep] = useState(1)
   const [columnMapping, setColumnMapping] = useState<{ [key: string]: string }>({})
   const [mappingError, setMappingError] = useState<string | null>(null)
-  const [userLists, setUserLists] = useState<{ id: string; nom: string; nb_contacts: number }[]>([]);
+  const [userLists, setUserLists] = useState<{ id: string; nom: string; nb_contacts: number; sendy_list_id?: string }[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [createListSidebarOpen, setCreateListSidebarOpen] = useState(false);
   const [optInConfirmed, setOptInConfirmed] = useState(false);
@@ -55,6 +56,8 @@ export default function ImportContactsPage() {
     { value: 'divider', label: 'divider' },
     { value: 'new', label: 'Ajouter un nouvel attribut' }
   ]);
+  // Ajout d'un état pour l'erreur de sélection de liste
+  const [listSelectionError, setListSelectionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mappingError) return;
@@ -74,6 +77,35 @@ export default function ImportContactsPage() {
       }
     }
   }, [columnMapping, mappingError]);
+
+  useEffect(() => {
+    if (step === 2 && user) {
+      // Charger les custom fields existants
+      supabase
+        .from('Contact_custom_fields')
+        .select('name')
+        .eq('userID', user.id)
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setContactAttributes(prev => {
+              // On évite les doublons
+              const existing = new Set(prev.map(a => a.value));
+              const customs = data
+                .map((f: { name: string }) => ({ value: f.name, label: f.name }))
+                .filter(f => !existing.has(f.value));
+              // On garde la structure divider/new à la fin
+              const base = prev.filter(a => !['divider', 'new'].includes(a.value));
+              return [
+                ...base,
+                ...customs,
+                { value: 'divider', label: 'divider' },
+                { value: 'new', label: 'Ajouter un nouvel attribut' }
+              ];
+            });
+          }
+        });
+    }
+  }, [step, user, supabase]);
 
   const mappedAttributes = Object.values(columnMapping);
   const mappedCount = mappedAttributes.filter(attr => attr !== 'ignore').length;
@@ -104,7 +136,7 @@ export default function ImportContactsPage() {
     if (!user) return;
     const { data } = await supabase
       .from("Listes")
-      .select("id, nom, nb_contacts")
+      .select("id, nom, nb_contacts, sendy_list_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (data) {
@@ -122,11 +154,30 @@ export default function ImportContactsPage() {
   }, [step]);
   
   const handleSelectList = (listId: string) => {
-    setSelectedListIds(prev =>
-      prev.includes(listId)
+    setListSelectionError(null);
+    const aucuneListe = userLists.find(l => l.nom === 'Aucune liste');
+    if (!aucuneListe) {
+      setSelectedListIds(prev =>
+        prev.includes(listId)
+          ? prev.filter(id => id !== listId)
+          : [...prev, listId]
+      );
+      return;
+    }
+    // Si on sélectionne "Aucune liste" alors qu'une autre est déjà sélectionnée, on ne garde que "Aucune liste"
+    if (listId === aucuneListe.id) {
+      setSelectedListIds(prev => prev.includes(listId) ? [] : [listId]);
+      return;
+    }
+    // Si "Aucune liste" est déjà sélectionnée, on la retire et on ajoute la nouvelle
+    setSelectedListIds(prev => {
+      if (prev.includes(aucuneListe.id)) {
+        return [listId];
+      }
+      return prev.includes(listId)
         ? prev.filter(id => id !== listId)
-        : [...prev, listId]
-    );
+        : [...prev, listId];
+    });
   };
 
   // Fonction utilitaire pour détecter la colonne email
@@ -306,6 +357,13 @@ export default function ImportContactsPage() {
       setError("Les informations nécessaires à l'importation sont manquantes.");
       return;
     }
+    // Vérification : empêcher "Aucune liste" + une autre
+    const aucuneListe = userLists.find(l => l.nom === 'Aucune liste');
+    if (aucuneListe && selectedListIds.includes(aucuneListe.id) && selectedListIds.length > 1) {
+      setListSelectionError("Vous ne pouvez pas sélectionner 'Aucune liste' en même temps qu'une autre liste.");
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -325,7 +383,8 @@ export default function ImportContactsPage() {
       const headers = results.data[0];
       const dataRows = results.data.slice(1);
 
-      const contactsToInsert = dataRows
+      // Construction des contacts à importer
+      const contactsToImport = dataRows
         .map((row: string[]) => {
           const contact: { [key: string]: any } = {
             created_at: new Date().toISOString(),
@@ -342,79 +401,142 @@ export default function ImportContactsPage() {
           });
           return contact;
         })
-        .filter((contact: { [key: string]: any }) => contact.email); // S'assurer que chaque contact à importer a un email
+        .filter((contact: { [key: string]: any }) => contact.email);
 
-      if (contactsToInsert.length === 0) {
+      if (contactsToImport.length === 0) {
         setError("Aucun contact valide à importer. Vérifiez que la colonne 'Email' est bien mappée et que les données sont présentes.");
         setIsLoading(false);
         return;
       }
 
-      // Étape 1: Insérer les contacts
-      const { data: insertedContacts, error: insertError } = await supabase
-        .from("Contacts")
-        .insert(contactsToInsert)
-        .select("id");
+      // 1. Récupérer les emails déjà existants pour la famille
+      const famille_id = user.compte_parent_id || user.id;
+      const importedEmails = contactsToImport.map((c: any) => c.email);
+      const { data: existingContacts, error: existingError } = await supabase
+        .from('Contacts')
+        .select('id, email')
+        .eq('famille_id', famille_id)
+        .in('email', importedEmails);
 
-      if (insertError) {
-        // Gère les erreurs de duplications d'email etc.
-        if (insertError.code === '23505') {
-            throw new Error("Certains contacts existent déjà ou des emails sont dupliqués dans votre fichier.");
+      if (existingError) throw new Error("Erreur lors de la récupération des contacts existants");
+
+      const existingEmails = new Set((existingContacts || []).map((c: any) => c.email));
+
+      // 2. Séparer les contacts à créer et ceux déjà existants
+      const contactsToCreate = contactsToImport.filter((c: any) => !existingEmails.has(c.email));
+      const contactsAlreadyExist = (existingContacts || []).filter((c: any) => importedEmails.includes(c.email));
+
+      // 3. Insérer les nouveaux contacts
+      let insertedContacts = [];
+      if (contactsToCreate.length > 0) {
+        const { data, error } = await supabase
+          .from('Contacts')
+          .insert(contactsToCreate.map((c: any) => ({
+            ...c,
+            famille_id,
+            userID: user.id,
+          })))
+          .select();
+        if (error) throw new Error("Erreur lors de l'insertion des nouveaux contacts");
+        insertedContacts = data || [];
+      }
+
+      // 4. Récupérer tous les contacts (nouveaux + existants) avec leur id
+      const allContacts = [
+        ...insertedContacts,
+        ...contactsAlreadyExist
+      ];
+
+      // 5. Pour chaque liste sélectionnée, ajouter la liaison si elle n'existe pas déjà
+      for (const listId of selectedListIds) {
+        for (const contact of allContacts) {
+          const { data: liaison } = await supabase
+            .from('Listes_Contacts')
+            .select('id')
+            .eq('contact_id', contact.id)
+            .eq('liste_id', listId)
+            .maybeSingle();
+
+          if (!liaison) {
+            await supabase
+              .from('Listes_Contacts')
+              .insert({ contact_id: contact.id, liste_id: listId, user_id: user.id });
+          }
         }
-        throw new Error(`Erreur lors de l'ajout des contacts: ${insertError.message}`);
       }
 
-      if (!insertedContacts || insertedContacts.length === 0) {
-        throw new Error("Aucun contact n'a été inséré. Il est possible que tous les contacts de ce fichier existent déjà dans votre base.");
-      }
-      
-      // Étape 2: Lier les contacts aux listes sélectionnées
-      const contactListLinks = insertedContacts.flatMap((contact) =>
-        selectedListIds.map((listId) => ({
-          contact_id: contact.id,
-          liste_id: listId,
-          user_id: user.id, // Important pour la sécurité au niveau des lignes (RLS)
-        }))
-      );
+      // 6. Insérer les valeurs des custom fields pour chaque contact
+      const customFieldNames = Object.values(columnMapping)
+        .filter(attr => attr && !['ignore', 'prenom', 'nom', 'email', 'entreprise', 'telephone'].includes(attr));
 
-      const { error: linkError } = await supabase
-        .from("Listes_Contacts")
-        .insert(contactListLinks);
+      if (customFieldNames.length > 0) {
+        // Récupérer tous les custom fields pour la famille
+        const { data: allCustomFields, error: customFieldsError } = await supabase
+          .from('Contact_custom_fields')
+          .select('id, name')
+          .eq('famille_id', famille_id);
 
-      if (linkError) {
-        // Idéalement, il faudrait annuler l'insertion des contacts ici (rollback)
-        // Pour l'instant, on affiche une erreur claire
-        throw new Error(`Les contacts ont été créés, mais une erreur est survenue lors de leur ajout aux listes: ${linkError.message}`);
+        if (customFieldsError) throw new Error("Erreur lors de la récupération des custom fields");
+
+        for (let i = 0; i < allContacts.length; i++) {
+          const contact = allContacts[i];
+          // Retrouver la ligne d'origine dans dataRows
+          const rowIdx = importedEmails.indexOf(contact.email);
+          if (rowIdx === -1) continue;
+          const row = dataRows[rowIdx];
+
+          for (let col = 0; col < headers.length; col++) {
+            const mapped = columnMapping[headers[col]];
+            if (mapped && !['ignore', 'prenom', 'nom', 'email', 'entreprise', 'telephone'].includes(mapped)) {
+              const customField = allCustomFields.find((f: any) => f.name === mapped);
+              if (customField) {
+                const value = row[col] ? row[col].toString().trim() : null;
+                if (value) {
+                  await supabase.from('Contact_custom_values').insert({
+                    contact_id: contact.id,
+                    custom_field_id: customField.id,
+                    value
+                  });
+                }
+              }
+            }
+          }
+        }
       }
 
-      // Après l'insertion des contacts et avant router.push
-      // 1. Récupère tous les champs personnalisés de l'utilisateur
-      const { data: customFieldsList, error: customFieldsError } = await supabase
-        .from('Contact_custom_fields')
-        .select('id, name')
-        .eq('userID', user.id);
-      if (customFieldsError) {
-        setError("Erreur lors de la récupération des champs personnalisés : " + customFieldsError.message);
-        setIsLoading(false);
-        return;
+      // (Garde ici la logique custom fields et synchro Sendy)
+      // 1. Synchronise les custom fields utilisés avec Sendy pour chaque liste sélectionnée
+      const uniqueCustomFields = Array.from(new Set(customFieldNames));
+      for (const listId of selectedListIds) {
+        const list = userLists.find(l => String(l.id) === String(listId));
+        if (list && list.sendy_list_id) {
+          for (const fieldName of uniqueCustomFields) {
+            try {
+              console.log("Appel sync-sendy-custom-field", { list_hash: list.sendy_list_id, field_name: fieldName, field_type: "Text", supabase_list_id: list.id });
+              await callSendyEdgeFunction("sync-sendy-custom-field", {
+                list_hash: list.sendy_list_id,
+                field_name: fieldName,
+                field_type: "Text",
+                supabase_list_id: list.id // <-- correction ici
+              });
+            } catch (err) {
+              console.error("Erreur lors de la synchro du custom field Sendy:", fieldName, "liste:", list.sendy_list_id, err);
+            }
+          }
+        }
       }
-      // 2. Pour chaque contact inséré, ajoute les valeurs custom
-      for (let i = 0; i < insertedContacts.length; i++) {
-        const contactId = insertedContacts[i].id;
-        const row = dataRows[i];
-        for (let h = 0; h < headers.length; h++) {
-          const header = headers[h];
-          const attribute = columnMapping[header];
-          // Si c'est un champ custom (présent dans customFieldsList)
-          const customField = customFieldsList.find(f => f.name === attribute);
-          if (customField) {
-            const value = row[h] ? row[h].toString().trim() : null;
-            if (value) {
-              await supabase.from('Contact_custom_values').insert([{
-                contact_id: contactId,
-                custom_field_id: customField.id,
-                value
-              }]);
+      // 2. Ensuite, synchronise chaque contact avec Sendy
+      for (const contact of allContacts) {
+        for (const listId of selectedListIds) {
+          const list = userLists.find(l => String(l.id) === String(listId));
+          if (list && list.sendy_list_id) {
+            try {
+              await callSendyEdgeFunction("sync-sendy-contacts", {
+                contact_id: contact.id,
+                sendy_list_hash: list.sendy_list_id
+              });
+            } catch (err) {
+              console.error("Erreur lors de la synchro Sendy pour contact:", contact.id, "liste:", list.sendy_list_id, err);
             }
           }
         }

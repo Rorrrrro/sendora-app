@@ -56,19 +56,6 @@ export function MultiListFilter({ lists, selectedListIds, onChange }: MultiListF
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-[#3d247a] hover:bg-[#efeffb] hover:text-[#3d247a] text-xs px-2 py-0 font-normal">Tout désélectionner</Button>
             </div>
             <ul className="space-y-1">
-              <li
-                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efeffb] cursor-pointer text-[#3d247a] font-normal"
-                onClick={() => toggleList('none')}
-                role="option"
-                aria-selected={selectedListIds.includes('none')}
-              >
-                <Checkbox 
-                  checked={selectedListIds.includes('none')} 
-                  className="h-4 w-4 border border-[#6B5DE6] rounded bg-[#FFFEFF]"
-                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 10 18 4 12" /></svg>}
-                />
-                <span className="truncate flex-1">Aucune liste</span>
-              </li>
               {lists.length === 0 && (
                 <li className="text-muted-foreground text-sm px-2 py-1">Aucune liste</li>
               )}

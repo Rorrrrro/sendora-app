@@ -76,18 +76,3 @@ NULL → compte principal.
 
 UUID d’un autre utilisateur → compte invité, rattaché au parent qui a invité.
 
-## Champs personnalisés pour les contacts
-
-Pour permettre à chaque client d'ajouter des attributs personnalisés à ses contacts, deux tables supplémentaires sont utilisées :
-
-- `contact_custom_fields` : référence les champs personnalisés créés par chaque client (userID, nom du champ, type).
-- `contact_custom_values` : stocke la valeur de chaque champ personnalisé pour chaque contact (contact_id, custom_field_id, value).
-
-### Exemple d'utilisation
-
-1. Lorsqu'un client crée un nouveau champ (ex: "ville"), une ligne est ajoutée dans `contact_custom_fields` avec son userID.
-2. Lorsqu'un contact a une valeur pour ce champ, une ligne est ajoutée dans `contact_custom_values` (contact_id, custom_field_id, value).
-3. Pour afficher le tableau des contacts avec les champs dynamiques, il faut faire une jointure entre `Contacts`, `contact_custom_fields` et `contact_custom_values`.
-
-Ce modèle permet une grande flexibilité et évolutivité pour la gestion des attributs de contacts.
-

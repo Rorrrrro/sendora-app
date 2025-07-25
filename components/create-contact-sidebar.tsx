@@ -18,6 +18,7 @@ interface Liste {
   nom: string
   user_id: string
   nb_contacts: number
+  sendy_list_id?: string // Ajouté pour la synchro Sendy
 }
 
 interface CreateContactSidebarProps {
@@ -31,7 +32,8 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   const [listes, setListes] = useState<Liste[]>([])
   const [isCreatingListe, setIsCreatingListe] = useState(false)
   const [newListeName, setNewListeName] = useState("")
-  const [selectedListeId, setSelectedListeId] = useState<string>("none")
+  const [newListeNameError, setNewListeNameError] = useState<string>("");
+  const [selectedListeId, setSelectedListeId] = useState<string>("")
   const [formData, setFormData] = useState({
     prenom: "",
     nom: "",
@@ -100,11 +102,8 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   const handleSelectChange = (value: string) => {
     if (value === "create-new") {
       setIsCreatingListe(true)
-      setSelectedListeId("none")
+      setSelectedListeId("")
       setFormData((prev) => ({ ...prev, liste_id: "" }))
-    } else if (value === "none") {
-      setFormData((prev) => ({ ...prev, liste_id: "" }))
-      setSelectedListeId("none")
     } else {
       setFormData((prev) => ({ ...prev, liste_id: value }))
       setSelectedListeId(String(value))
@@ -113,10 +112,10 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
 
   const handleCreateListe = async () => {
     if (!newListeName.trim()) {
-      alert("Le nom de la liste ne peut pas être vide")
-      return
+      setNewListeNameError("Le nom de la liste ne peut pas être vide");
+      return;
     }
-
+    setNewListeNameError("");
     if (!user?.id) {
       console.error("Utilisateur non connecté")
       alert("Vous devez être connecté pour créer une liste")
@@ -136,6 +135,10 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         .select()
 
       if (error) {
+        if (error.code === '23505') {
+          setNewListeNameError("Vous avez déjà une liste avec ce nom.");
+          return;
+        }
         console.error("Erreur lors de la création de la liste:", error)
         alert(`Erreur: ${error.message}`)
       } else if (data && data.length > 0) {
@@ -230,21 +233,26 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
       }
 
       // Si une liste est sélectionnée, créer la liaison dans Listes_Contacts
+      let sendyListHash = null;
       if (formData.liste_id && contactData && contactData.length > 0) {
+        // Ajoute user_id et loggue la requête
+        const liaisonPayload = {
+          liste_id: formData.liste_id,
+          contact_id: contactData[0].id,
+          user_id: user?.id
+        };
+        console.log('Insertion Listes_Contacts', liaisonPayload);
         const { error: liaisonError } = await createBrowserClient()
           .from("Listes_Contacts")
-          .insert([
-            {
-              liste_id: formData.liste_id,
-              contact_id: contactData[0].id,
-            },
-          ])
+          .insert([liaisonPayload]);
 
         if (liaisonError) {
+          alert("Erreur lors de la liaison du contact à la liste : " + JSON.stringify(liaisonError));
           console.error("Erreur lors de la liaison contact-liste:", liaisonError)
+          return;
         } else {
           // Mettre à jour le nombre de contacts dans la liste
-          const selectedListe = listes.find((liste) => liste.id === formData.liste_id)
+          const selectedListe = listes.find((liste) => String(liste.id) === String(formData.liste_id))
           if (selectedListe) {
             const { error: updateError } = await createBrowserClient()
               .from("Listes")
@@ -254,8 +262,20 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
             if (updateError) {
               console.error("Erreur lors de la mise à jour du nombre de contacts:", updateError)
             }
+            // Récupère le sendy_list_id pour l'appel à l'Edge Function
+            sendyListHash = selectedListe.sendy_list_id;
           }
         }
+      }
+
+      // Appel Edge Function pour synchroniser le contact avec Sendy
+      try {
+        await callSendyEdgeFunction("sync-sendy-contacts", {
+          contact_id: contactData[0].id,
+          sendy_list_hash: sendyListHash
+        });
+      } catch (err) {
+        console.error("Erreur lors de la synchro Sendy:", err);
       }
 
       // Réinitialiser le formulaire
@@ -267,7 +287,7 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         telephone: "",
         liste_id: "",
       })
-      setSelectedListeId("none")
+      setSelectedListeId("")
       setEmailError("")
 
       // Fermer le panneau et notifier le parent
@@ -285,8 +305,6 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
   // Fonction pour obtenir le texte à afficher dans le select
   const getSelectedListeText = () => {
     if (!selectedListeId) return "Sélectionner une liste"
-    if (selectedListeId === "none") return "Sélectionner une liste"
-
     const selectedListe = listes.find((liste) => liste.id === selectedListeId)
     return selectedListe
       ? `${selectedListe.nom} (${selectedListe.nb_contacts || 0} contacts)`
@@ -387,19 +405,26 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
             <div>
               <Label htmlFor="liste">Liste</Label>
               {isCreatingListe ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    id="newListe"
-                    placeholder="Nouvelle liste"
-                    value={newListeName}
-                    onChange={(e) => setNewListeName(e.target.value)}
-                  />
-                  <Button type="button" onClick={handleCreateListe} size="sm" className="bg-[#6c43e0] text-white hover:bg-[#4f32a7] font-bold">
-                    Créer
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsCreatingListe(false)}>
-                    Annuler
-                  </Button>
+                <div className="flex flex-col gap-1 mt-1">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="newListe"
+                      placeholder="Nouvelle liste"
+                      value={newListeName}
+                      onChange={e => {
+                        setNewListeName(e.target.value);
+                        if (newListeNameError) setNewListeNameError("");
+                      }}
+                      className={newListeNameError ? "border-red-500 focus:ring-red-500" : ""}
+                    />
+                    <Button type="button" onClick={handleCreateListe} size="sm" className="bg-[#6c43e0] text-white hover:bg-[#4f32a7] font-bold">
+                      Créer
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCreatingListe(false)}>
+                      Annuler
+                    </Button>
+                  </div>
+                  {newListeNameError && <p className="text-red-500 text-sm mt-1">{newListeNameError}</p>}
                 </div>
               ) : (
                 <div className="mt-1">
@@ -410,7 +435,6 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
                       <SelectValue placeholder="Sélectionner une liste" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Aucune liste</SelectItem>
                       {listesLoading ? (
                         <div className="p-2 space-y-2">
                           <Skeleton className="h-8 w-full" />
