@@ -186,7 +186,7 @@ export default function DomainesPage() {
                     {!isAuthentifie(d) && (
                       <Button
                         className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold px-4 py-2 rounded-md text-sm"
-                        // TODO: Ajoute ici la logique d'authentification
+                        onClick={() => router.push(`/expediteurs/domaines/authentifier?domain=${encodeURIComponent(d.nom)}`)}
                       >
                         Authentifier
                       </Button>
