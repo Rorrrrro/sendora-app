@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/dashboard-layout";
+import { createBrowserClient } from "@/lib/supabase";
+import { useUser } from "@/contexts/user-context";
+import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface RecordDKIM {
   name: string;
@@ -23,6 +27,10 @@ export default function AuthentifierDomainePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingDNS, setCheckingDNS] = useState(false);
+  const [dnsResults, setDnsResults] = useState<any>(null);
+  const { user } = useUser();
+  const supabase = createBrowserClient();
 
   useEffect(() => {
     if (initialDomain) {
@@ -62,6 +70,52 @@ export default function AuthentifierDomainePage() {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  const checkDomainDNS = async () => {
+    if (!domain || !user) return;
+    
+    setCheckingDNS(true);
+    setDnsResults(null);
+    
+    try {
+      // Récupérer l'ID du domaine depuis la base
+      const { data: domainData, error: domainError } = await supabase
+        .from('Domaines')
+        .select('id')
+        .eq('nom', domain)
+        .eq('created_by', user.id)
+        .single();
+
+      if (domainError || !domainData) {
+        throw new Error('Domaine non trouvé dans la base de données');
+      }
+
+      // Appeler l'edge function
+      const response = await fetch('https://fvcizjojzlteryioqmwb.supabase.co/functions/v1/check-domain-dns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          domain: domain,
+          domainId: domainData.id
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDnsResults(data.results);
+        // Ne pas recharger la page, garder les résultats affichés
+      } else {
+        throw new Error(data.error || 'Erreur lors de la vérification DNS');
+      }
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setCheckingDNS(false);
+    }
+  };
+
   // Valeurs à afficher (même si records est null)
   const txtName = records?.txt?.name || "";
   const txtValue = records?.txt?.value || "";
@@ -78,17 +132,60 @@ export default function AuthentifierDomainePage() {
             Pour authentifier un domaine, ajoutez les enregistrements DNS suivants chez votre hébergeur. L'authentification peut prendre jusqu'à 48h.
           </p>
         </div>
+
+        {/* Bouton Vérifier les DNS */}
+        <div className="flex justify-center">
+          <Button 
+            onClick={checkDomainDNS}
+            disabled={checkingDNS || !domain}
+            className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold px-6 py-3 rounded-lg shadow-md"
+          >
+            {checkingDNS ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Vérification en cours...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Vérifier les DNS
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Résultats DNS */}
+        {dnsResults && (
+          <Card className="border-none shadow-sm bg-[#FFFEFF]">
+            <CardContent className="pt-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold mb-2">Résultats de la vérification DNS</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={`text-center p-3 rounded-lg ${dnsResults.spf ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <div className="font-semibold">SPF</div>
+                  <div className="text-sm">{dnsResults.spf ? 'Vérifié' : 'Non vérifié'}</div>
+                </div>
+                <div className={`text-center p-3 rounded-lg ${dnsResults.txt ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <div className="font-semibold">TXT SES</div>
+                  <div className="text-sm">{dnsResults.txt ? 'Vérifié' : 'Non vérifié'}</div>
+                </div>
+                <div className={`text-center p-3 rounded-lg ${dnsResults.dkim ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <div className="font-semibold">DKIM</div>
+                  <div className="text-sm">{dnsResults.dkim ? 'Vérifié' : 'Non vérifié'}</div>
+                </div>
+                <div className={`text-center p-3 rounded-lg ${dnsResults.dmarc ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <div className="font-semibold">DMARC</div>
+                  <div className="text-sm">{dnsResults.dmarc ? 'Vérifié' : 'Non vérifié'}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-none shadow-sm bg-[#FFFEFF] mt-6">
           <CardHeader className="pb-3" />
           <CardContent>
-            <div className="flex gap-2 mb-8">
-              <input
-                type="text"
-                value={domain}
-                readOnly
-                className="border rounded px-3 py-2 flex-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
             {loading && <div className="mb-4 text-gray-500">Chargement...</div>}
             {error && <div className="mb-4 text-red-600">{error}</div>}
             <div className="space-y-8">
