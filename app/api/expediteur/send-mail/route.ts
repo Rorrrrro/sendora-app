@@ -36,10 +36,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    console.log('Tentative d\'envoi email pour:', email, 'avec token:', finalToken);
     await sendExpediteurConfirmationEmail({ email, nom, token: finalToken });
+    console.log('Email envoyé avec succès');
     return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error("Erreur lors de l'envoi de l'email :", e);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email" }, { status: 500 });
+  } catch (e: any) {
+    console.error("Erreur détaillée lors de l'envoi de l'email :", e);
+    console.error("Message d'erreur:", e.message);
+    console.error("Stack trace:", e.stack);
+    return NextResponse.json({ 
+      error: "Erreur lors de l'envoi de l'email",
+      details: e.message,
+      code: e.code,
+      response: e.response
+    }, { status: 500 });
   }
 } 
