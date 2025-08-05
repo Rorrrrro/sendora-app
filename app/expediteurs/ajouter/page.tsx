@@ -98,7 +98,7 @@ export default function AjouterExpediteurPage() {
         }
         return;
       }
-      await fetch("/api/expediteur/send-mail", {
+      const response = await fetch("/api/expediteur/send-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -107,6 +107,11 @@ export default function AjouterExpediteurPage() {
           token: data?.token
         })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur lors de l\'envoi de l\'email' }));
+        throw new Error(errorData.error || 'Erreur lors de l\'envoi de l\'email');
+      }
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
