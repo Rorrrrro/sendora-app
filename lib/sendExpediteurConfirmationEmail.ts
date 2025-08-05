@@ -13,8 +13,8 @@ export async function sendExpediteurConfirmationEmail(expediteur: {
   
   const transporter = nodemailer.createTransport({
     host: 'email-smtp.eu-west-1.amazonaws.com', // région mise à jour pour eu-west-1
-    port: 587,
-    secure: false, // TLS (STARTTLS)
+    port: 465,
+    secure: true, // SSL/TLS
     auth: {
       user: process.env.SMTP_USER!,
       pass: process.env.SMTP_PASS!,
@@ -24,7 +24,7 @@ export async function sendExpediteurConfirmationEmail(expediteur: {
   const confirmationLink = `https://sendora.fr/auth/confirmer-expediteur?token=${expediteur.token}`;
 
   await transporter.sendMail({
-    from: 'Sendora <romain.vernay@sendora.fr>',
+    from: 'Sendora <campagne@sendora.fr>',
     to: expediteur.email,
     subject: `Confirmez votre adresse d'expéditeur`,
     html: `
