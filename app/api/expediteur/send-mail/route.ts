@@ -9,6 +9,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email requis' }, { status: 400 });
   }
 
+  // Debug des variables d'environnement
+  console.log('=== DEBUG API ===');
+  console.log('SMTP_USER dans API:', process.env.SMTP_USER ? 'Défini' : 'Non défini');
+  console.log('SMTP_PASS dans API:', process.env.SMTP_PASS ? 'Défini' : 'Non défini');
+  console.log('SMTP_USER valeur dans API:', process.env.SMTP_USER);
+  console.log('SMTP_PASS longueur dans API:', process.env.SMTP_PASS?.length);
+
   let finalToken = token;
   if (renvoi) {
     if (!id) {

@@ -11,14 +11,18 @@ export async function sendExpediteurConfirmationEmail(expediteur: {
   console.log('SMTP_USER valeur:', process.env.SMTP_USER);
   console.log('SMTP_PASS longueur:', process.env.SMTP_PASS?.length);
   
+  // AWS SES nécessite des identifiants SMTP spécifiques, pas des Access Keys
   const transporter = nodemailer.createTransport({
-    host: 'email-smtp.eu-west-1.amazonaws.com', // région mise à jour pour eu-west-1
-    port: 465,
-    secure: true, // SSL/TLS
+    host: 'email-smtp.eu-west-1.amazonaws.com',
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.SMTP_USER!,
       pass: process.env.SMTP_PASS!,
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 
   const confirmationLink = `https://sendora.fr/auth/confirmer-expediteur?token=${expediteur.token}`;
