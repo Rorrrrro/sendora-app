@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ interface Records {
   cname: RecordDKIM[];
 }
 
-export default function Page() {
+function AuthentifierDomaineContent() {
   const searchParams = useSearchParams();
   const initialDomain = searchParams.get("domain") || "";
   const [records, setRecords] = useState<Records | null>(null);
@@ -260,5 +260,13 @@ export default function Page() {
         </Card>
       </div>
     </AppLayout>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <AuthentifierDomaineContent />
+    </Suspense>
   );
 } 
