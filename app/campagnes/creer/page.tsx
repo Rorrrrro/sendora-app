@@ -24,6 +24,20 @@ export default function CreateCampaignPage() {
   const [senderName, setSenderName] = useState('');
   const [senderDomaineStatus, setSenderDomaineStatus] = useState<string | undefined>(undefined);
 
+  // Fonction pour détecter les emails génériques
+  const isGenericEmail = (email: string) => {
+    const genericDomains = [
+      'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.fr', 'ymail.com',
+      'outlook.com', 'hotmail.com', 'hotmail.fr', 'live.com', 'msn.com',
+      'aol.com', 'protonmail.com', 'icloud.com', 'me.com', 'mac.com',
+      'gmx.com', 'gmx.fr', 'orange.fr', 'wanadoo.fr', 'sfr.fr', 'free.fr',
+      'laposte.net'
+    ];
+    
+    const domain = email.split('@')[1]?.toLowerCase();
+    return genericDomains.includes(domain);
+  };
+
   // Récupérer les expéditeurs vérifiés de la famille
   useEffect(() => {
     const fetchExpediteurs = async () => {
@@ -220,7 +234,7 @@ export default function CreateCampaignPage() {
                               />
                             </div>
 
-                            {/* Alerte domaine non authentifié */}
+                            {/* Alerte domaine non authentifié ou email générique */}
                             {senderDomaineStatus !== 'Authentifié' && senderEmail && (
                               <div className="flex items-center gap-4 bg-[#f4f3fd] border border-[#e5e1fa] rounded-lg px-4 py-3 mb-6 max-w-lg">
                                 <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#6c43e0] bg-opacity-10 -ml-2">
@@ -231,11 +245,26 @@ export default function CreateCampaignPage() {
                                   </svg>
                                 </span>
                                 <div className="flex-1 pl-0">
-                                  <div className="font-bold text-base text-[#2d1863] mb-1">Votre domaine n'est pas authentifié</div>
+                                  <div className="font-bold text-base text-[#2d1863] mb-1">
+                                    {isGenericEmail(senderEmail) 
+                                      ? "Email générique détecté" 
+                                      : "Votre domaine n'est pas authentifié"
+                                    }
+                                  </div>
                                   <div className="text-sm text-[#3d247a]">
-                                    Pour envoyer des emails avec votre adresse, vous devez <a href="#" className="underline text-[#6c43e0] hover:text-[#4f32a7]">authentifier votre domaine</a>.
-                                    <br /><span className="block mt-2"></span>
-                                    Sinon, vos emails seront envoyés via <span className="font-semibold">campagnes@sendora.fr</span>
+                                    {isGenericEmail(senderEmail) ? (
+                                      <>
+                                        Les emails personnels (gmail, outlook, etc.) ne peuvent pas être authentifiés.
+                                        <br /><span className="block mt-2"></span>
+                                        Pour garantir la distribution, vos emails seront envoyés via <span className="font-semibold">campagnes@sendora.fr</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        Pour envoyer des emails avec votre adresse, vous devez <a href="#" className="underline text-[#6c43e0] hover:text-[#4f32a7]">authentifier votre domaine</a>.
+                                        <br /><span className="block mt-2"></span>
+                                        Sinon, vos emails seront envoyés via <span className="font-semibold">campagnes@sendora.fr</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>

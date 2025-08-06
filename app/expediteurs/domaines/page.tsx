@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, CheckCircle, Shield, AlertTriangle, MoreHorizontal, Plus, Trash2, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Search, CheckCircle, Shield, AlertTriangle, MoreHorizontal, Plus, Trash2, Info, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AppLayout } from "@/components/dashboard-layout";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,10 @@ export default function DomainesPage() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [domaines, setDomaines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddDomain, setShowAddDomain] = useState(false);
+  const [newDomain, setNewDomain] = useState("");
+  const [domainError, setDomainError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useUser();
   const supabase = createBrowserClient();
   const router = useRouter();
@@ -54,6 +59,91 @@ export default function DomainesPage() {
     );
   }
 
+  // Validation du domaine
+  const isValidDomain = (domain: string) => {
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    return domainRegex.test(domain) && domain.includes('.');
+  };
+
+  // Fonction pour ajouter un domaine
+  const handleAddDomain = async () => {
+    if (!user) return;
+    
+    setDomainError("");
+    if (!newDomain.trim()) {
+      setDomainError("Le nom de domaine est requis");
+      return;
+    }
+    
+    if (!isValidDomain(newDomain.trim())) {
+      setDomainError("Veuillez entrer un nom de domaine valide");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Vérifier si l'utilisateur a déjà ajouté ce domaine
+      console.log('Vérification domaine existant pour:', user.id);
+      const { data: existingUserDomain, error: checkError } = await supabase
+        .from('Domaines')
+        .select('nom')
+        .eq('nom', newDomain.trim().toLowerCase())
+        .eq('created_by', user.id);
+
+      if (checkError) {
+        console.error('Erreur vérification domaine:', checkError);
+        setDomainError(`Erreur lors de la vérification: ${checkError.message}`);
+        return;
+      }
+
+      if (existingUserDomain && existingUserDomain.length > 0) {
+        setDomainError("Vous avez déjà ajouté ce domaine");
+        return;
+      }
+
+      // Ajouter le domaine (même s'il existe déjà pour d'autres utilisateurs)
+      const domainData = {
+        nom: newDomain.trim().toLowerCase(),
+        created_by: user.id,
+        statut_spf: 'Non vérifié',
+        statut_dkim: 'Non vérifié',
+        statut_dmarc: 'Non vérifié',
+        statut_txt: 'Non vérifié'
+        // statut_domaine est une colonne générée, on ne l'assigne pas
+      };
+
+      console.log('Tentative d\'ajout du domaine:', domainData);
+
+      const { data: insertData, error } = await supabase
+        .from('Domaines')
+        .insert(domainData)
+        .select();
+
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        setDomainError(`Erreur lors de l'ajout du domaine: ${error.message}`);
+        return;
+      }
+
+      // Fermer la popup et recharger les domaines
+      setShowAddDomain(false);
+      setNewDomain("");
+      
+      // Recharger la liste des domaines
+      const { data } = await supabase
+        .from("Domaines")
+        .select("*")
+        .eq("created_by", user.id);
+      
+      if (data) setDomaines(data);
+      
+    } catch (error) {
+      setDomainError("Erreur lors de l'ajout du domaine");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -62,7 +152,7 @@ export default function DomainesPage() {
             <h1 className="text-3xl font-bold tracking-tight">Domaines</h1>
             <p className="text-muted-foreground mt-3">Le domaine d'email, c'est ce qui suit le @ dans votre adresse. Son authentification est essentielle pour une bonne délivrabilité.</p>
           </div>
-          <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold shadow-md flex items-center gap-2" onClick={() => alert('Ajouter un domaine (à implémenter)')}>
+          <Button className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold shadow-md flex items-center gap-2" onClick={() => setShowAddDomain(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Ajouter un domaine
           </Button>
@@ -207,6 +297,73 @@ export default function DomainesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Popup Ajouter un domaine */}
+      {showAddDomain && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-lg w-full mx-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-[#23272f]">Ajouter un domaine</h2>
+              <button
+                onClick={() => {
+                  setShowAddDomain(false);
+                  setNewDomain("");
+                  setDomainError("");
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="mb-8">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Nom de domaine
+                </label>
+                <p className="text-xs text-gray-500 -mt-1">Exemple : mondomaine.com</p>
+                <Input
+                  type="text"
+                  placeholder="mondomaine.com"
+                  value={newDomain}
+                  onChange={(e) => {
+                    setNewDomain(e.target.value);
+                    if (domainError) setDomainError("");
+                  }}
+                  className="w-full"
+                />
+                {domainError && (
+                  <p className="text-red-600 text-sm mt-1">{domainError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddDomain(false);
+                  setNewDomain("");
+                  setDomainError("");
+                }}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleAddDomain}
+                disabled={isSubmitting || !newDomain.trim()}
+                className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white"
+              >
+                {isSubmitting ? "Ajout en cours..." : "Ajouter un domaine"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 } 

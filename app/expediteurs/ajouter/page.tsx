@@ -14,6 +14,7 @@ export default function AjouterExpediteurPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Nouvel état
   const router = useRouter();
   const [now, setNow] = useState("");
   const { user } = useUser();
@@ -33,16 +34,20 @@ export default function AjouterExpediteurPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true); // Désactive le bouton
     if (!name.trim()) {
       setError("Le nom d'expéditeur est requis.");
+      setIsSubmitting(false);
       return;
     }
     if (!isValidEmail(email)) {
       setError("Veuillez entrer une adresse email valide.");
+      setIsSubmitting(false);
       return;
     }
     if (!user) {
       setError("Vous devez être connecté pour ajouter un expéditeur.");
+      setIsSubmitting(false);
       return;
     }
     // Récupérer le compte_parent_id de l'utilisateur
@@ -53,6 +58,7 @@ export default function AjouterExpediteurPage() {
       .single();
     if (userRowError || !userRow) {
       setError("Impossible de vérifier la famille de l'utilisateur.");
+      setIsSubmitting(false);
       return;
     }
     const familleId = userRow.compte_parent_id || user.id;
@@ -63,6 +69,7 @@ export default function AjouterExpediteurPage() {
       .or(`id.eq.${familleId},compte_parent_id.eq.${familleId}`);
     if (usersFamilleError || !usersFamille) {
       setError("Impossible de vérifier la famille de l'utilisateur.");
+      setIsSubmitting(false);
       return;
     }
     const familleIds = usersFamille.map(u => u.id);
@@ -74,10 +81,12 @@ export default function AjouterExpediteurPage() {
       .eq("email", email);
     if (errorExp) {
       setError("Erreur lors de la vérification de l'email dans la famille.");
+      setIsSubmitting(false);
       return;
     }
     if (expediteursMemeFamille && expediteursMemeFamille.length > 0) {
       setError("Cet email d'expéditeur est déjà utilisé");
+      setIsSubmitting(false);
       return;
     }
     try {
@@ -96,6 +105,7 @@ export default function AjouterExpediteurPage() {
         } else {
           setError(error.message || "Erreur lors de l'ajout de l'expéditeur.");
         }
+        setIsSubmitting(false);
         return;
       }
       const response = await fetch("/api/expediteur/send-mail", {
@@ -110,15 +120,18 @@ export default function AjouterExpediteurPage() {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur lors de l\'envoi de l\'email' }));
+        setIsSubmitting(false);
         throw new Error(errorData.error || 'Erreur lors de l\'envoi de l\'email');
       }
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         router.push("/expediteurs");
-      }, 4000);
+      }, 5000); // 5 secondes
+      setIsSubmitting(false);
     } catch (e: any) {
       setError(e.message || "Erreur inattendue.");
+      setIsSubmitting(false);
     }
   };
 
@@ -193,6 +206,7 @@ export default function AjouterExpediteurPage() {
               <Button
                 type="submit"
                 className="rounded-xl bg-[#6c43e0] hover:bg-[#4f32a7] text-white font-semibold px-6"
+                disabled={isSubmitting}
               >
                 Enregistrer
               </Button>
