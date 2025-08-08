@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/dashboard-layout";
 import { createBrowserClient } from "@/lib/supabase";
 import { useUser } from "@/contexts/user-context";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface RecordDKIM {
   name: string;
@@ -31,17 +32,53 @@ function AuthentifierDomaineContent() {
   const [dnsResults, setDnsResults] = useState<any>(null);
   const { user } = useUser();
   const supabase = createBrowserClient();
+  const router = useRouter();
 
   useEffect(() => {
     if (initialDomain) {
-      fetchRecords(initialDomain);
+      // Récupérer les tokens sans afficher de loading
+      fetchRecordsSilently(initialDomain);
     }
     // eslint-disable-next-line
   }, [initialDomain]);
 
+  async function fetchRecordsSilently(d: string) {
+    try {
+      // Récupérer les tokens depuis la base de données
+      const { data: domainData, error } = await supabase
+        .from('Domaines')
+        .select('txt_records, dkim_records, dmarc_records')
+        .eq('nom', d.trim())
+        .eq('created_by', user?.id)
+        .single();
+
+      if (error || !domainData) {
+        throw new Error('Domaine non trouvé dans la base de données');
+      }
+
+      if (domainData.txt_records && domainData.dkim_records) {
+        // Tokens déjà présents, les utiliser
+        setRecords({
+          txt: {
+            name: `_amazonses.${d.trim()}`,
+            value: domainData.txt_records
+          },
+          cname: domainData.dkim_records
+        });
+        setDomain(d.trim());
+      } else {
+        // Tokens manquants, afficher le loading et récupérer via l'API
+        setLoading(true);
+        await fetchRecords(d);
+        setLoading(false);
+      }
+    } catch (e: any) {
+      setError(e.message || "Erreur inconnue");
+      setRecords(null);
+    }
+  }
+
   async function fetchRecords(d: string) {
-    setLoading(true);
-    setError(null);
     try {
       const res = await fetch("https://sendy.sendora.fr/api/aws-ses-domain.php", {
         method: "POST",
@@ -58,8 +95,6 @@ function AuthentifierDomaineContent() {
     } catch (e: any) {
       setError(e.message || "Erreur inconnue");
       setRecords(null);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -121,11 +156,20 @@ function AuthentifierDomaineContent() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Authentifier un domaine</h1>
-          <p className="text-muted-foreground mt-3">
-            Pour authentifier un domaine, ajoutez les enregistrements DNS suivants chez votre hébergeur. L'authentification peut prendre jusqu'à 48h.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Authentifier un domaine</h1>
+            <p className="text-muted-foreground mt-3">
+              Pour authentifier un domaine, ajoutez les enregistrements DNS suivants chez votre hébergeur. L'authentification peut prendre jusqu'à 48h.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/expediteurs/domaines')}
+            className="text-gray-400 hover:text-gray-600 transition-colors mr-8"
+            aria-label="Fermer"
+          >
+            <X className="w-7 h-7" />
+          </button>
         </div>
         {/* Bouton Vérifier les DNS */}
         <div className="flex justify-center">

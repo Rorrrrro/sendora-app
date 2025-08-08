@@ -125,6 +125,43 @@ export default function DomainesPage() {
         return;
       }
 
+      // Récupérer les tokens DNS immédiatement
+      try {
+        console.log('Récupération des tokens DNS pour:', newDomain.trim());
+        const response = await fetch("https://sendy.sendora.fr/api/aws-ses-domain.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            secret: process.env.NEXT_PUBLIC_SENDY_DOMAIN_SECRET || 'k8Jd!2pQz7wX9vB3sT4rL6mN1yUeR5hG',
+            domain: newDomain.trim()
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Mettre à jour le domaine avec les tokens DNS
+            const { error: updateError } = await supabase
+              .from('Domaines')
+              .update({
+                txt_records: data.records.txt.value,
+                dkim_records: data.records.cname,
+                dmarc_records: 'v=DMARC1; p=none; rua=mailto:postmaster@' + newDomain.trim(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', insertData[0].id);
+
+            if (updateError) {
+              console.error('Erreur mise à jour tokens:', updateError);
+            } else {
+              console.log('Tokens DNS récupérés et stockés avec succès');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erreur récupération tokens DNS:', error);
+      }
+
       // Fermer la popup et recharger les domaines
       setShowAddDomain(false);
       setNewDomain("");
