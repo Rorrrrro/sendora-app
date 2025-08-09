@@ -18,6 +18,7 @@ export default function CreateCampaignPage() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [senderValidated, setSenderValidated] = useState(false);
   const [recipientsValidated, setRecipientsValidated] = useState(false);
+  const [objectValidated, setObjectValidated] = useState(false);
   const router = useRouter();
   const { user } = useUser();
   const [expediteurs, setExpediteurs] = useState<{ id: string; email: string; nom: string; statut_domaine?: string }[]>([]);
@@ -30,6 +31,8 @@ export default function CreateCampaignPage() {
   const [quotaMensuel, setQuotaMensuel] = useState(0);
   const [mailsEnvoyesCeMois, setMailsEnvoyesCeMois] = useState(0);
   const [contactsByList, setContactsByList] = useState<{ [listId: string]: { id: string; email: string }[] }>({});
+  const [subjectLine, setSubjectLine] = useState('');
+  const [previewText, setPreviewText] = useState('');
 
   // Fonction pour détecter les emails génériques
   const isGenericEmail = (email: string) => {
@@ -580,10 +583,26 @@ export default function CreateCampaignPage() {
                   <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <Circle className="w-5 h-5 text-gray-300" />
+                        {objectValidated ? (
+                          <CheckCircle2 className="w-5 h-5 text-[#6c43e0]" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-300" />
+                        )}
                         <div>
                           <h3 className="text-xl font-bold text-[#111827]">Objet</h3>
-                          <p className="text-sm text-gray-500">Ajoutez un objet à votre campagne.</p>
+                          {!objectValidated && (
+                            <p className="text-sm text-gray-500">Ajoutez un objet à votre campagne.</p>
+                          )}
+                          {objectValidated && (
+                            <div className="flex flex-col gap-1">
+                              <div className="text-base">
+                                <span className="font-semibold text-[#3d247a]">Objet de la campagne:</span> <span className="text-gray-500">{subjectLine}</span>
+                              </div>
+                              <div className="text-base">
+                                <span className="font-semibold text-[#3d247a]">Aperçu:</span> <span className="text-gray-500">{previewText}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       {!expandedSection && (
@@ -592,27 +611,148 @@ export default function CreateCampaignPage() {
                           onClick={() => handleSectionClick('object')}
                           className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
                         >
-                          Ajouter un objet
+                          {objectValidated ? 'Modifier l\'objet' : 'Ajouter un objet'}
                         </Button>
                       )}
                     </div>
                     {expandedSection === 'object' && (
-                      <div className="flex flex-col items-center gap-4 mt-8">
-                        <div className="w-full">
-                          {/* Contenu pour l'édition de l'objet */}
-                          <div className="flex justify-center gap-3 mt-8">
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setExpandedSection(null)}
-                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
-                            >
-                              Annuler
-                            </Button>
-                            <Button 
-                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
-                            >
-                              Enregistrer
-                            </Button>
+                      <div className="flex flex-col md:flex-row gap-12">
+                        <div className="flex-1 min-w-[380px] max-w-lg">
+                          <div className="space-y-6 mt-8">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <label className="text-lg font-semibold text-[#2d1863]">Objet de l'email</label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button type="button" className="text-gray-400 hover:text-gray-600 focus:outline-none">
+                                      <HelpCircle className="w-4 h-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent side="right" align="start" className="max-w-[320px] text-sm rounded-lg shadow-lg p-5 bg-white border border-gray-200">
+                                    L'objet est la première chose que verront vos destinataires. Faites-le court et percutant pour augmenter vos taux d'ouverture.
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <Input
+                                value={subjectLine}
+                                onChange={(e) => setSubjectLine(e.target.value)}
+                                placeholder="Exemple: Découvrez notre nouvelle collection"
+                                className="w-full max-w-lg border-[#e0e0e0]"
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <label className="text-lg font-semibold text-[#2d1863]">Texte d'aperçu</label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button type="button" className="text-gray-400 hover:text-gray-600 focus:outline-none">
+                                      <HelpCircle className="w-4 h-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent side="right" align="start" className="max-w-[320px] text-sm rounded-lg shadow-lg p-5 bg-white border border-gray-200">
+                                    Ce texte apparaît sous l'objet dans la boîte de réception et donne un avant-goût du contenu de l'email.
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <Input
+                                value={previewText}
+                                onChange={(e) => setPreviewText(e.target.value)}
+                                placeholder="Exemple: Profitez de 15% de réduction sur votre première commande"
+                                className="w-full max-w-lg border-[#e0e0e0]"
+                              />
+                            </div>
+
+                            <div className="flex justify-center gap-3 mt-8">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setExpandedSection(null)}
+                                className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd]"
+                              >
+                                Annuler
+                              </Button>
+                              <Button 
+                                onClick={() => {
+                                  setObjectValidated(!!subjectLine);
+                                  setExpandedSection(null);
+                                }}
+                                disabled={!subjectLine}
+                                className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white"
+                              >
+                                Enregistrer
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="hidden md:flex w-full justify-end items-start pr-16">
+                          <div className="flex flex-col items-center gap-6" style={{minWidth: 320}}>
+                            <div className="relative flex items-center justify-center" style={{width: 320, height: 600}}>
+                              {/* Contour iPhone */}
+                              <div className="absolute inset-0 rounded-[2.5rem] border-[10px] border-[#e0e0e0] shadow-xl bg-gradient-to-br from-[#f7f7f9] to-[#eeeef0] z-0"></div>
+                              {/* Boutons latéraux */}
+                              {/* Volume haut */}
+                              <div className="absolute left-[-2px] top-[120px] w-2 h-8 bg-[#d1d5db] rounded-full z-20"></div>
+                              {/* Volume bas */}
+                              <div className="absolute left-[-2px] top-[160px] w-2 h-8 bg-[#d1d5db] rounded-full z-20"></div>
+                              {/* Mute */}
+                              <div className="absolute left-[-1px] top-[90px] w-1.5 h-5 bg-[#b5b8ba] rounded-full z-20"></div>
+                              {/* Power */}
+                              <div className="absolute right-[-2px] top-[110px] w-2 h-16 bg-[#d1d5db] rounded-full z-20"></div>
+                              {/* Encoche découpée dans le fond */}
+                              <div className="absolute top-[12px] left-1/2 -translate-x-1/2 w-[160px] h-9 bg-gradient-to-br from-[#f7f7f9] to-[#eeeef0] z-30 rounded-b-3xl flex items-center justify-center">
+                                <div className="flex flex-row items-center justify-center gap-1.5 mx-auto">
+                                  <div className="w-10 h-2 bg-[#cfd2d6] rounded-full"></div>
+                                  <div className="w-2.5 h-2.5 bg-[#cfd2d6] rounded-full"></div>
+                                </div>
+                              </div>
+                              {/* Ecran */}
+                              <div className="relative w-[276px] h-[560px] bg-white rounded-[2rem] overflow-hidden z-10 flex flex-col shadow-lg">
+                                {/* Barre de statut */}
+                                <div className="flex items-center justify-between px-4 pt-3 pb-1 text-[13px] text-gray-400 font-medium">
+                                  <span>09:38</span>
+                                  <div className="flex items-center justify-end w-full gap-1 -mr-1">
+                                    {/* Wifi */}
+                                    <svg width="20" height="12" viewBox="0 0 16 10" fill="none">
+                                      <path d="M8 8.5c.5 0 .9.4.9.9s-.4.9-.9.9-.9-.4-.9-.9.4-.9.9-.9zm-2-2c1.1-1.1 2.9-1.1 4 0 .2.2.5.2.7 0 .2-.2.2-.5 0-.7-1.5-1.5-3.9-1.5-5.4 0-.2.2-.2.5 0 .7.2.2.5.2.7 0zm-2-2c2.2-2.2 5.8-2.2 8 0 .2.2.5.2.7 0 .2-.2.2-.5 0-.7-2.6-2.6-6.8-2.6-9.4 0-.2.2-.2.5 0 .7.2.2.5.2.7 0z" fill="#a3a6ab"/>
+                                    </svg>
+                                    {/* Batterie */}
+                                    <svg width="20" height="10" viewBox="0 0 16 8" fill="none">
+                                      <rect x="1" y="1" width="11" height="6" rx="1.2" fill="none" stroke="#a3a6ab" strokeWidth="1"/>
+                                      <rect x="13" y="3" width="1.5" height="2" rx="0.75" fill="#a3a6ab"/>
+                                    </svg>
+                                  </div>
+                                </div>
+                                {/* Inbox mail */}
+                                <div className="px-4 py-2 border-b border-gray-200 text-center font-bold text-gray-800 text-lg">Boîte de réception</div>
+                                {/* Premier mail (actif) */}
+                                <div className="px-4 py-2 border-b border-gray-100">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-[#2d1863] text-base">{senderName || 'Sendora'}</span>
+                                    <span className="font-bold text-gray-700 text-base w-14 text-center font-poppins">09:38</span>
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 text-[15px]">{subjectLine || 'Objet du message...'}</div>
+                                    <div className="text-gray-500 text-xs">{previewText || 'Votre texte d\'aperçu'}</div>
+                                  </div>
+                                </div>
+                                <div className="border-b border-gray-100" />
+                                {/* Mails suivants (gris, barres) */}
+                                {['08:41','07:12','06:03'].map((hour, i) => (
+                                  <div key={i} className="px-4 py-2 border-b border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-gray-300 text-base">{senderName || 'Sendora'}</span>
+                                      <span className="font-bold text-gray-300 text-base w-14 text-center font-poppins">{hour}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 mt-1">
+                                      <div className="h-2 w-2/3 bg-gray-100 rounded-full"></div>
+                                      <div className="h-2 w-1/2 bg-gray-100 rounded-full"></div>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex-1"></div>
+                                <div className="text-center text-sm text-gray-400 pb-4 pt-2">Aperçu du rendu sur mobile</div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
