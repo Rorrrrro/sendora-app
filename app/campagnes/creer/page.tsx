@@ -17,12 +17,19 @@ export default function CreateCampaignPage() {
   const [editingName, setEditingName] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [senderValidated, setSenderValidated] = useState(false);
+  const [recipientsValidated, setRecipientsValidated] = useState(false);
   const router = useRouter();
   const { user } = useUser();
   const [expediteurs, setExpediteurs] = useState<{ id: string; email: string; nom: string; statut_domaine?: string }[]>([]);
   const [senderEmail, setSenderEmail] = useState('');
   const [senderName, setSenderName] = useState('');
   const [senderDomaineStatus, setSenderDomaineStatus] = useState<string | undefined>(undefined);
+  const [userLists, setUserLists] = useState<{ id: string; nom: string; nb_contacts: number }[]>([]);
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
+  const [totalDestinataires, setTotalDestinataires] = useState(0);
+  const [quotaMensuel, setQuotaMensuel] = useState(0);
+  const [mailsEnvoyesCeMois, setMailsEnvoyesCeMois] = useState(0);
+  const [contactsByList, setContactsByList] = useState<{ [listId: string]: { id: string; email: string }[] }>({});
 
   // Fonction pour détecter les emails génériques
   const isGenericEmail = (email: string) => {
@@ -55,6 +62,41 @@ export default function CreateCampaignPage() {
     fetchExpediteurs();
   }, [user]);
 
+  // Correction du typage pour familleId
+  const familleId = user && user.compte_parent_id ? user.compte_parent_id : user?.id;
+
+  // Récupérer les listes de la famille
+  useEffect(() => {
+    if (!familleId) return;
+    const supabase = createBrowserClient();
+    supabase
+      .from('Listes')
+      .select('id, nom, nb_contacts')
+      .eq('famille_id', familleId)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) setUserLists(data);
+      });
+  }, [familleId]);
+
+  // Récupérer le quota et le nombre d'emails envoyés ce mois pour la famille (parent ou user)
+  useEffect(() => {
+    if (!familleId) return;
+    const supabase = createBrowserClient();
+    const fetchQuota = async () => {
+      const { data, error } = await supabase
+        .from('Utilisateurs')
+        .select('quota_mensuel, mails_envoyes_ce_mois')
+        .eq('id', familleId)
+        .single();
+      if (!error && data) {
+        setQuotaMensuel(data.quota_mensuel || 0);
+        setMailsEnvoyesCeMois(data.mails_envoyes_ce_mois || 0);
+      }
+    };
+    fetchQuota();
+  }, [familleId]);
+
   // Mettre à jour les valeurs quand les expéditeurs sont chargés ou changent
   useEffect(() => {
     if (expediteurs.length > 0) {
@@ -79,6 +121,42 @@ export default function CreateCampaignPage() {
   const handleSectionClick = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
+
+  // Récupérer les contacts de chaque liste sélectionnée
+  useEffect(() => {
+    if (!userLists.length) return;
+    const supabase = createBrowserClient();
+    const fetchContacts = async () => {
+      const contactsMap: { [listId: string]: { id: string; email: string }[] } = {};
+      for (const list of userLists) {
+        const { data, error } = await supabase
+          .from('Listes_Contacts')
+          .select('contact_id, Contacts(email)')
+          .eq('liste_id', list.id);
+        if (!error && data) {
+          contactsMap[list.id] = data.map((row: any) => ({ id: row.contact_id, email: row.Contacts?.email }));
+        }
+      }
+      setContactsByList(contactsMap);
+    };
+    fetchContacts();
+  }, [userLists]);
+
+  // Calculer le total de destinataires uniques sélectionnés
+  useEffect(() => {
+    const emailsSet = new Set<string>();
+    selectedListIds.forEach(listId => {
+      (contactsByList[listId] || []).forEach(contact => {
+        if (contact.email) emailsSet.add(contact.email);
+      });
+    });
+    setTotalDestinataires(emailsSet.size);
+  }, [selectedListIds, contactsByList]);
+
+  // Calcul du quota restant
+  const emailsRestants = Math.max(0, quotaMensuel - mailsEnvoyesCeMois - totalDestinataires);
+  const quotaDisponible = Math.max(0, quotaMensuel - mailsEnvoyesCeMois);
+  const progress = quotaDisponible > 0 ? Math.min(100, (totalDestinataires / quotaDisponible) * 100) : 0;
 
   return (
     <AppLayout>
@@ -133,13 +211,13 @@ export default function CreateCampaignPage() {
             </div>
 
             {/* Bloc principal */}
-            <div className="space-y-4 relative">
+            <div className="space-y-5 relative">
               {/* Expéditeur */}
               <div className="relative z-20">
                 <div 
                   className={`rounded-2xl border transition-all overflow-hidden
                     ${expandedSection === 'sender' 
-                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
                       : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
                     }
                     ${expandedSection && expandedSection !== 'sender' ? 'opacity-50' : ''}
@@ -171,7 +249,7 @@ export default function CreateCampaignPage() {
                         <Button 
                           variant="outline" 
                           onClick={() => handleSectionClick('sender')}
-                          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap"
+                          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
                         >
                           {senderValidated ? 'Modifier l\'expéditeur' : 'Gérer l\'expéditeur'}
                         </Button>
@@ -370,40 +448,286 @@ export default function CreateCampaignPage() {
               </div>
 
               {/* Destinataires */}
-              <div className={`transition-opacity duration-200 ${expandedSection === 'sender' ? 'opacity-50' : ''}`}>
-                <Section
-                  title="Destinataires"
-                  description="Les personnes qui recevront votre campagne."
-                  buttonLabel="Ajouter des destinataires"
-                />
+              <div className="relative z-20">
+                <div 
+                  className={`rounded-2xl border transition-all overflow-hidden
+                    ${expandedSection === 'recipients' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
+                      : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
+                    }
+                    ${expandedSection && expandedSection !== 'recipients' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {recipientsValidated ? (
+                          <CheckCircle2 className="w-5 h-5 text-[#6c43e0]" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-300" />
+                        )}
+                        <div>
+                          <h3 className="text-xl font-bold text-[#111827]">Destinataires</h3>
+                          {recipientsValidated ? (
+                            <div className="flex items-center gap-2 text-base">
+                              <span className="font-semibold text-[#3d247a]">{totalDestinataires} destinataire{totalDestinataires > 1 ? 's' : ''}</span>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-gray-600">{emailsRestants} emails restants</span>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">Les personnes qui recevront votre campagne.</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Masquer le bouton Modifier les destinataires si la box est ouverte en mode édition */}
+                      {!expandedSection && (
+                        <Button 
+                        variant="outline" 
+                        onClick={() => handleSectionClick('recipients')}
+                        className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
+                      >
+                        {recipientsValidated ? 'Modifier les destinataires' : 'Ajouter des destinataires'}
+                      </Button>
+                      )}
+                    </div>
+                    {expandedSection === 'recipients' && (
+                      <div className="flex flex-col items-center gap-4 mt-6 min-w-[420px] max-w-2xl mx-auto py-4">
+                        <div className="flex items-center gap-2 mb-4 w-full">
+                          <label className="text-xl font-semibold text-[#2d1863]">Sélectionner une ou plusieurs listes</label>
+                        </div>
+                        <div className="space-y-1.5 w-full max-h-80 overflow-y-auto px-1">
+                          {userLists.map(list => (
+                            <label 
+                              key={list.id} 
+                              className={`flex items-center justify-between py-3 px-4 rounded-lg border border-gray-200 cursor-pointer w-full shadow-sm transition-all duration-200
+                                ${selectedListIds.includes(list.id) 
+                                  ? 'bg-[#f4f3fd] hover:bg-[#eeebfc]' 
+                                  : 'bg-white hover:bg-[#f5f5f5]'
+                                }
+                              `}
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedListIds.includes(list.id)}
+                                  onChange={() => {
+                                    setSelectedListIds(prev =>
+                                      prev.includes(list.id)
+                                        ? prev.filter(id => id !== list.id)
+                                        : [...prev, list.id]
+                                    );
+                                  }}
+                                  className="accent-[#6c43e0] w-[18px] h-[18px] rounded-sm cursor-pointer focus:ring-[#6c43e0] focus:ring-offset-0"
+                                />
+                                <span className="font-medium text-[#2d1863] text-base ml-1">{list.nom}</span>
+                              </div>
+                              <span className="text-gray-500 text-base">{list.nb_contacts} contact{list.nb_contacts > 1 ? 's' : ''}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {/* Barre de progression du quota */}
+                        <div className="mt-4 w-full">
+                          <div className="flex justify-between items-center mb-1 w-full">
+                            <span className="text-base text-gray-600">{totalDestinataires} destinataire{totalDestinataires > 1 ? 's' : ''} sélectionné{totalDestinataires > 1 ? 's' : ''}</span>
+                            <span className="text-base font-semibold text-[#6c43e0]">{emailsRestants} emails restants</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-2 rounded-full transition-all duration-300 bg-[#6c43e0]"
+                              style={{ width: `${quotaDisponible === 0 ? 100 : Math.min(100, (totalDestinataires / quotaDisponible) * 100)}%` }}
+                            ></div>
+                          </div>
+                          {emailsRestants < 0 && totalDestinataires > 0 && (
+                            <div className="text-gray-600 text-base mt-2 text-center">Attention : le nombre de destinataires dépasse votre quota mensuel.</div>
+                          )}
+                        </div>
+                        <div className="flex justify-center gap-3 mt-8 w-full">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setExpandedSection(null)}
+                            className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                          >
+                            Annuler
+                          </Button>
+                          <Button 
+                            className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            disabled={totalDestinataires === 0}
+                            onClick={() => {
+                              setRecipientsValidated(true);
+                              setExpandedSection(null);
+                            }}
+                          >
+                            Enregistrer
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Objet */}
-              <div className={`transition-opacity duration-200 ${expandedSection === 'sender' ? 'opacity-50' : ''}`}>
-                <Section
-                  title="Objet"
-                  description="Ajoutez un objet à votre campagne."
-                  buttonLabel="Ajouter un objet"
-                />
+              <div className="relative z-20">
+                <div 
+                  className={`rounded-2xl border transition-all overflow-hidden
+                    ${expandedSection === 'object' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
+                      : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
+                    }
+                    ${expandedSection && expandedSection !== 'object' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Circle className="w-5 h-5 text-gray-300" />
+                        <div>
+                          <h3 className="text-xl font-bold text-[#111827]">Objet</h3>
+                          <p className="text-sm text-gray-500">Ajoutez un objet à votre campagne.</p>
+                        </div>
+                      </div>
+                      {!expandedSection && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleSectionClick('object')}
+                          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
+                        >
+                          Ajouter un objet
+                        </Button>
+                      )}
+                    </div>
+                    {expandedSection === 'object' && (
+                      <div className="flex flex-col items-center gap-4 mt-8">
+                        <div className="w-full">
+                          {/* Contenu pour l'édition de l'objet */}
+                          <div className="flex justify-center gap-3 mt-8">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setExpandedSection(null)}
+                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                            >
+                              Annuler
+                            </Button>
+                            <Button 
+                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            >
+                              Enregistrer
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Design */}
-              <div className={`transition-opacity duration-200 ${expandedSection === 'sender' ? 'opacity-50' : ''}`}>
-                <Section
-                  title="Design"
-                  description="Créez le contenu de votre email."
-                  buttonLabel="Commencer le design"
-                />
+              <div className="relative z-20">
+                <div 
+                  className={`rounded-2xl border transition-all overflow-hidden
+                    ${expandedSection === 'design' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
+                      : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
+                    }
+                    ${expandedSection && expandedSection !== 'design' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Circle className="w-5 h-5 text-gray-300" />
+                        <div>
+                          <h3 className="text-xl font-bold text-[#111827]">Design</h3>
+                          <p className="text-sm text-gray-500">Créez le contenu de votre email.</p>
+                        </div>
+                      </div>
+                      {!expandedSection && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleSectionClick('design')}
+                          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
+                        >
+                          Commencer le design
+                        </Button>
+                      )}
+                    </div>
+                    {expandedSection === 'design' && (
+                      <div className="flex flex-col items-center gap-4 mt-8">
+                        <div className="w-full">
+                          {/* Contenu pour l'édition du design */}
+                          <div className="flex justify-center gap-3 mt-8">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setExpandedSection(null)}
+                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                            >
+                              Annuler
+                            </Button>
+                            <Button 
+                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            >
+                              Enregistrer
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Paramètres additionnels */}
-              <div className={`transition-opacity duration-200 ${expandedSection === 'sender' ? 'opacity-50' : ''}`}>
-                <Section
-                  title="Paramètres additionnels"
-                  description="Options avancées de la campagne."
-                  buttonLabel="Modifier les paramètres"
-                  hideCheck
-                />
+              <div className="relative z-20">
+                <div 
+                  className={`rounded-2xl border transition-all overflow-hidden
+                    ${expandedSection === 'params' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
+                      : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
+                    }
+                    ${expandedSection && expandedSection !== 'params' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-[#111827]">Paramètres additionnels</h3>
+                          <p className="text-sm text-gray-500">Options avancées de la campagne.</p>
+                        </div>
+                      </div>
+                      {!expandedSection && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleSectionClick('params')}
+                          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
+                        >
+                          Modifier les paramètres
+                        </Button>
+                      )}
+                    </div>
+                    {expandedSection === 'params' && (
+                      <div className="flex flex-col items-center gap-4 mt-8">
+                        <div className="w-full">
+                          {/* Contenu pour l'édition des paramètres */}
+                          <div className="flex justify-center gap-3 mt-8">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setExpandedSection(null)}
+                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                            >
+                              Annuler
+                            </Button>
+                            <Button 
+                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            >
+                              Enregistrer
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -423,31 +747,3 @@ export default function CreateCampaignPage() {
   );
 }
 
-// Section réutilisable
-function Section({ title, description, buttonLabel, checked, hideCheck, dimmed }: any) {
-  return (
-    <div className={`relative z-20 rounded-2xl border px-8 py-6 transition-all bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0] ${dimmed ? 'opacity-50' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {!hideCheck && (
-            checked ? (
-              <CheckCircle2 className="w-5 h-5 text-[#6c43e0]" />
-            ) : (
-              <Circle className="w-5 h-5 text-gray-300" />
-            )
-          )}
-          <div>
-            <h3 className="text-xl font-bold text-[#111827]">{title}</h3>
-            <p className="text-sm text-gray-500">{description}</p>
-          </div>
-        </div>
-        <Button 
-          variant="outline" 
-          className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap"
-        >
-          {buttonLabel}
-        </Button>
-      </div>
-    </div>
-  );
-}
