@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { PlusCircle, FileCode, Copy as CloneIcon, History } from "lucide-react";
 import { AppLayout } from "@/components/dashboard-layout";
@@ -10,6 +11,7 @@ import { AppLayout } from "@/components/dashboard-layout";
 const CreateTemplatePage: React.FC = () => {
   const router = useRouter();
   const [templateName, setTemplateName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,19 +54,17 @@ const CreateTemplatePage: React.FC = () => {
 
   return (
     <AppLayout>
-      {/* Barre d'en-tête pour le nom du template */}
-      <div className="sticky top-0 z-10 bg-white shadow-sm border-b flex items-center px-6 py-4">
-        <span className="text-lg font-semibold mr-4">Nom du template :</span>
-        <input
-          ref={inputRef}
-          id="template-name"
-          value={templateName}
-          onChange={(e) => setTemplateName(e.target.value)}
-          placeholder="Ex : Newsletter Juin"
-          className="w-full max-w-md rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-[#6c43e0] focus:ring-[#6c43e0]"
-        />
-      </div>
       <div className="p-6 max-w-5xl mx-auto">
+        <div className="mb-8">
+          <Input
+            ref={inputRef}
+            id="template-name"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder="Nom du template"
+            className="max-w-md text-lg"
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
             className="p-6 hover:border-primary cursor-pointer transition-all"
@@ -137,7 +137,6 @@ const CreateTemplatePage: React.FC = () => {
 };
 
 export default CreateTemplatePage;
-
 
 
 
