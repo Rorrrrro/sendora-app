@@ -555,7 +555,7 @@ export default function StripoEditor() {
 
   const handleSaveAndExit = async () => {
     if (!window.StripoEditorApi || !window.StripoEditorApi.actionsApi) {
-      // alert("Erreur: API Stripo non disponible");
+
       return;
     }
     
@@ -606,22 +606,22 @@ export default function StripoEditor() {
               }
 
               if (result.error) {
-                // alert("Erreur Supabase : " + JSON.stringify(result.error));
+
                 setIsSaving(false);
                 return;
               }
               
-              // alert("Template sauvegardé avec succès ✅");
+
               router.push("/templates");
             } catch (error) {
-              // alert("Erreur JS: " + (error instanceof Error ? error.message : String(error)));
+ 
               setIsSaving(false);
             }
           }
         });
       });
     } catch (error) {
-      // alert("Erreur lors de la sauvegarde: " + (error instanceof Error ? error.message : String(error)));
+  
       setIsSaving(false);
     }
   };
