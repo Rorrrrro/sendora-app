@@ -1,17 +1,16 @@
 "use client";
 import dynamic from "next/dynamic";
-import { AppLayout } from "@/components/dashboard-layout";
 import { useUser } from "@/contexts/user-context";
 import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
-const UnlayerEditor = dynamic(
-  () => import("@/components/UnlayerEditor"),
+const StripoEditor = dynamic(
+  () => import("@/components/StripoEditor"),
   {
     ssr: false,
     loading: () => (
       <div className="h-screen w-screen flex items-center justify-center">
-        Chargement de l'éditeur...
+        Chargement de l'éditeur Stripo...
       </div>
     ),
   }
@@ -21,14 +20,12 @@ function EditorContent() {
   const { user, isLoading } = useUser();
   const router = useRouter();
 
-  // Redirection si l'utilisateur n'est pas connecté
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/connexion");
     }
   }, [user, isLoading, router]);
 
-  // Afficher un écran de chargement pendant la vérification
   if (isLoading || !user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
@@ -64,7 +61,7 @@ function EditorContent() {
         bottom: 0,
         zIndex: 10
       }}>
-        <UnlayerEditor />
+        <StripoEditor />
       </div>
     </>
   );
@@ -74,7 +71,7 @@ export default function Page() {
   return (
     <Suspense fallback={
       <div className="h-screen w-screen flex items-center justify-center">
-        Chargement de l'éditeur...
+        Chargement de l'éditeur Stripo...
       </div>
     }>
       <EditorContent />
