@@ -7,7 +7,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const emailRaw = searchParams.get("email")
   const email = emailRaw ? decodeURIComponent(emailRaw) : null
-  const token = searchParams.get("token")
+  // Ajout : support du paramètre token_hash (cas Outlook/Supabase)
+  const token = searchParams.get("token") || searchParams.get("token_hash")
   const type = searchParams.get("type")
   const router = useRouter()
   const [resent, setResent] = useState(true)
