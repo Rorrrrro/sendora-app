@@ -180,7 +180,7 @@ function CompleteProfileForm() {
         try {
           console.log("Création du dossier famille pour l'utilisateur principal");
           
-          // Format correct du payload selon le message d'erreur dans les logs
+          // Correction du format du payload pour create-family-folder - utiliser family_id
           const response = await fetch('https://fvcizjojzlteryioqmwb.functions.supabase.co/create-family-folder', {
             method: 'POST',
             headers: {
@@ -188,8 +188,7 @@ function CompleteProfileForm() {
               'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-              id: user.id,
-              compte_parent_id: null
+              family_id: user.id // La fonction attend family_id et non id
             })
           });
           
@@ -206,19 +205,21 @@ function CompleteProfileForm() {
         console.log("Compte enfant détecté, pas de création de dossier famille");
       }
 
-      // Appel Edge Function Sendy factorisé avec les données à jour de l'utilisateur
+      // Pour sync-sendy-brand, envoyer les données dans un format compatible avec le corps que la fonction attend
       try {
+        // La fonction attend un objet directement avec les propriétés, pas d'objet record
         const result = await callSendyEdgeFunction("sync-sendy-brand", {
+          // Ces données doivent correspondre à l'objet "record" attendu par la fonction
           id: user.id,
           prenom: formData.prenom.trim(),
           nom: formData.nom.trim(),
           entreprise: formData.entreprise.trim(),
-          email: user.email
+          email: user.email,
+          compte_parent_id: compte_parent_id
         });
         
         console.log("Synchro Sendy Brand réussie:", result);
       } catch (sendyErr) {
-        // On ignore les erreurs côté Sendy pour ne pas bloquer l'utilisateur
         console.error("Erreur non bloquante lors de la synchro Sendy:", sendyErr);
       }
 
