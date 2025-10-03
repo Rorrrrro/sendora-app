@@ -195,19 +195,18 @@ function CompleteProfileForm() {
         console.log("Compte enfant détecté, pas de création de dossier famille");
       }
 
-      // Pour sync-sendy-brand, envoyer les données dans un format compatible avec le corps que la fonction attend
+      // Pour sync-sendy-brand, ENVOIE le payload dans record !
       try {
-        // La fonction attend un objet directement avec les propriétés, pas d'objet record
         const result = await callSendyEdgeFunction("sync-sendy-brand", {
-          // Ces données doivent correspondre à l'objet "record" attendu par la fonction
-          id: user.id,
-          prenom: formData.prenom.trim(),
-          nom: formData.nom.trim(),
-          entreprise: formData.entreprise.trim(),
-          email: user.email,
-          compte_parent_id: compte_parent_id
+          record: {
+            id: user.id,
+            prenom: formData.prenom.trim(),
+            nom: formData.nom.trim(),
+            entreprise: formData.entreprise.trim(),
+            email: user.email,
+            compte_parent_id: compte_parent_id
+          }
         });
-        
         console.log("Synchro Sendy Brand réussie:", result);
       } catch (sendyErr) {
         console.error("Erreur non bloquante lors de la synchro Sendy:", sendyErr);
@@ -404,3 +403,4 @@ export default function CompleteProfilePage() {
     </ClientOnly>
   )
 }
+
