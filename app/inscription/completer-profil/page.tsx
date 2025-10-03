@@ -134,6 +134,15 @@ function CompleteProfileForm() {
       // Rafraîchir les données utilisateur dans le contexte
       await refreshUserData();
 
+      // Appel Edge Function Sendy factorisé (remis en place)
+      await callSendyEdgeFunction("sync-sendy-brand", {
+        id: user.id,
+        prenom: formData.prenom.trim(),
+        nom: formData.nom.trim(),
+        entreprise: formData.entreprise.trim(),
+        email: user.email
+      });
+
       // Récupère la ligne "Aucune liste" créée automatiquement par le trigger
       const { data: aucuneListe, error: listError } = await supabase
         .from("Listes")
