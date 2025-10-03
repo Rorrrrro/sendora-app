@@ -1,32 +1,32 @@
 // lib/sendyEdge.ts
+import { createBrowserClient } from "@/lib/supabase";
+
+// URL de base des fonctions Edge Supabase
+const FUNCTIONS_URL = 'https://fvcizjojzlteryioqmwb.functions.supabase.co';
 
 export async function callSendyEdgeFunction(functionName: string, record: any) {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${functionName}`;
-  console.log("Appel Edge Function URL:", url);
   try {
-    // Ajout du catch pour les erreurs CORS - si l'appel échoue en prod, on continue silencieusement
-    const response = await fetch(
-      `https://{YOUR_PROJECT_REF}.supabase.co/functions/v1/${functionName}`, 
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Ajout du header Authorization si nécessaire
-          // 'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(record)
-      }
-    );
+    // Récupérer le token d'authentification
+    const supabase = createBrowserClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    // URL complète de la fonction
+    const url = `${FUNCTIONS_URL}/${functionName}`;
+    console.log(`Appel Edge Function ${functionName}`);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(record)
+    });
     
     if (!response.ok) {
-      console.warn(`Erreur Edge Function ${functionName}:`, response.status);
-      // Ne pas bloquer la suite du processus
-      return null;
-    }
-    
-    // Lis le body une seule fois
-    const text = await response.text();
-    let result = null;
+      const errorText = await response.text();
+      console.error(`Erreur Edge Function ${functionName}:`, response.status, errorText);
     try {
       result = JSON.parse(text);
     } catch {

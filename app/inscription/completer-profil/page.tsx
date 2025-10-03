@@ -180,24 +180,12 @@ function CompleteProfileForm() {
         try {
           console.log("Création du dossier famille pour l'utilisateur principal");
           
-          // Correction du format du payload pour create-family-folder - utiliser family_id
-          const response = await fetch('https://fvcizjojzlteryioqmwb.functions.supabase.co/create-family-folder', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              family_id: user.id // La fonction attend family_id et non id
-            })
+          // Utiliser callSendyEdgeFunction au lieu d'un fetch direct
+          const result = await callSendyEdgeFunction("create-family-folder", {
+            family_id: user.id // La fonction attend family_id comme paramètre
           });
           
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Erreur lors de la création du dossier famille:", response.status, errorText);
-          } else {
-            console.log("Dossier famille créé avec succès");
-          }
+          console.log("Dossier famille créé avec succès:", result);
         } catch (folderErr) {
           console.error("Erreur non bloquante lors de la création du dossier famille:", folderErr);
         }
@@ -404,6 +392,18 @@ function CompleteProfileForm() {
       )}
     </>
   )
+}
+
+// Composant principal avec Suspense
+export default function CompleteProfilePage() {
+  return (
+    <ClientOnly>
+      <Suspense fallback={<div>Chargement...</div>}>
+        <CompleteProfileForm />
+      </Suspense>
+    </ClientOnly>
+  )
+}
 }
 
 // Composant principal avec Suspense
