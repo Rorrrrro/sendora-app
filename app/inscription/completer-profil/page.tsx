@@ -134,6 +134,9 @@ function CompleteProfileForm() {
       // Rafraîchir les données utilisateur dans le contexte
       await refreshUserData();
 
+      // Petit délai pour laisser le temps à Supabase de traiter les triggers
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Appel Edge Function Sendy factorisé (remis en place)
       try {
         await callSendyEdgeFunction("sync-sendy-brand", {
