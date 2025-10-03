@@ -1,42 +1,35 @@
-// lib/sendyEdge.ts
-import { createBrowserClient } from "@/lib/supabase";
+import { createBrowserClient } from '@/lib/supabase';
 
-// URL de base des fonctions Edge Supabase
-const FUNCTIONS_URL = 'https://fvcizjojzlteryioqmwb.functions.supabase.co';
-
-export async function callSendyEdgeFunction(functionName: string, record: any) {
+/**
+ * Appelle une Edge Function Supabase avec authentification et gestion d'erreur.
+ * 
+ * @param functionName Nom de la fonction edge à appeler
+ * @param payload Données à envoyer à la fonction
+ * @returns Réponse de la fonction, ou null en cas d'erreur
+ */
+export async function callSendyEdgeFunction(functionName: string, payload: any) {
   try {
-    // Récupérer le token d'authentification
     const supabase = createBrowserClient();
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    
-    // URL complète de la fonction
-    const url = `${FUNCTIONS_URL}/${functionName}`;
-    console.log(`Appel Edge Function ${functionName}`);
-    
-    const response = await fetch(url, {
+
+    const response = await fetch(`https://fvcizjojzlteryioqmwb.functions.supabase.co/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
-      body: JSON.stringify(record)
+      body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Erreur Edge Function ${functionName}:`, response.status, errorText);
-    try {
-      result = JSON.parse(text);
-    } catch {
-      result = text;
+      throw new Error(`${response.status}: ${errorText}`);
     }
 
-    return result;
+    return await response.json();
   } catch (err) {
-    // Log de l'erreur mais ne pas bloquer le flux
     console.warn(`Erreur lors de l'appel à ${functionName}:`, err);
     return null;
   }
-};
+}
