@@ -158,6 +158,43 @@ function CompleteProfileForm() {
       // Petit délai pour laisser le temps à Supabase de traiter les triggers
       await new Promise(resolve => setTimeout(resolve, 300));
 
+      // Vérifier si l'utilisateur a un compte_parent_id
+      const { data: userData, error: userDataError } = await supabase
+        .from("Utilisateurs")
+        .select("compte_parent_id")
+        .eq("id", user.id)
+        .single();
+        
+      if (userDataError) {
+        console.error("Erreur lors de la récupération des données utilisateur:", userDataError);
+      }
+      
+      // Récupérer la session pour obtenir le token d'accès
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      // Si compte_parent_id est null, alors on appelle l'edge function
+      const compte_parent_id = userData?.compte_parent_id ?? null;
+      
+      if (compte_parent_id === null) {
+        try {
+          console.log("Création du dossier famille pour l'utilisateur principal");
+          await fetch('https://fvcizjojzlteryioqmwb.functions.supabase.co/create-family-folder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ record: { id: user.id, compte_parent_id } })
+          });
+          console.log("Dossier famille créé avec succès");
+        } catch (folderErr) {
+          console.error("Erreur non bloquante lors de la création du dossier famille:", folderErr);
+        }
+      } else {
+        console.log("Compte enfant détecté, pas de création de dossier famille");
+      }
+
       // Appel Edge Function Sendy factorisé (remis en place)
       try {
         await callSendyEdgeFunction("sync-sendy-brand", {
