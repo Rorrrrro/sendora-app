@@ -66,14 +66,35 @@ function CompleteProfileForm() {
           tries++;
         }
       }
+      
       if (user && !cancelled) {
-        await supabase
-          .from("Utilisateurs")
-          .upsert([{ id: user.id, email: user.email }], { onConflict: 'id' });
+        // Insérer seulement l'email, l'ID sera associé automatiquement
+        try {
+          const { error } = await supabase
+            .from("Utilisateurs")
+            .insert([{ email: user.email }]);
+            
+          if (error && error.code !== '23505') { // Ignore unique constraint violations
+            console.error("Erreur création utilisateur:", error);
+          }
+          
+          // On vérifie que la ligne existe bien maintenant
+          const { data, error: checkError } = await supabase
+            .from("Utilisateurs")
+            .select("*")
+            .eq("email", user.email);
+            
+          if (checkError || !data?.length) {
+            console.error("Vérification création utilisateur échouée:", checkError);
+          }
+        } catch (err) {
+          console.error("Exception lors de la création utilisateur:", err);
+        }
       } else if (!user) {
         console.log("Impossible de récupérer l'utilisateur (non connecté) après attente");
       }
     }
+    
     const code = searchParams.get("code");
     if (code) {
       waitForSessionAndCreateUser();

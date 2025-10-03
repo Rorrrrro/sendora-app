@@ -44,7 +44,24 @@ function VerifyEmailContent() {
           const { error } = await supabase.auth.verifyOtp({ token, type: "signup", email })
           setValidating(false)
           if (!error) {
-            // Ne pas créer l'utilisateur ici, c'est fait dans completer-profil
+            // Création de l'utilisateur ici pour garantir qu'il existe
+            try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                // Utiliser une requête SQL directe au lieu de l'upsert qui cause l'erreur
+                const { error: userError } = await supabase.rpc('create_utilisateur_if_not_exists', { 
+                  user_id: currentUser.id, 
+                  user_email: currentUser.email 
+                });
+                
+                if (userError) {
+                  console.error("Erreur lors de la création de l'utilisateur:", userError);
+                }
+              }
+            } catch (err) {
+              console.error("Erreur lors de la création de l'utilisateur:", err);
+            }
+            
             setValidated(true)
             setTimeout(() => router.replace("/inscription/completer-profil"), 1500)
           } else {
