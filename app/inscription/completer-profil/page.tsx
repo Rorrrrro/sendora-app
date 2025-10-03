@@ -173,21 +173,32 @@ function CompleteProfileForm() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       
-      // Si compte_parent_id est null, alors on appelle l'edge function
+      // Si compte_parent_id est null, alors on appelle l'edge function create-family-folder
       const compte_parent_id = userData?.compte_parent_id ?? null;
       
       if (compte_parent_id === null) {
         try {
           console.log("Création du dossier famille pour l'utilisateur principal");
-          await fetch('https://fvcizjojzlteryioqmwb.functions.supabase.co/create-family-folder', {
+          
+          // Format correct du payload selon le message d'erreur dans les logs
+          const response = await fetch('https://fvcizjojzlteryioqmwb.functions.supabase.co/create-family-folder', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
+              'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ record: { id: user.id, compte_parent_id } })
+            body: JSON.stringify({
+              id: user.id,
+              compte_parent_id: null
+            })
           });
-          console.log("Dossier famille créé avec succès");
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Erreur lors de la création du dossier famille:", response.status, errorText);
+          } else {
+            console.log("Dossier famille créé avec succès");
+          }
         } catch (folderErr) {
           console.error("Erreur non bloquante lors de la création du dossier famille:", folderErr);
         }
@@ -195,15 +206,17 @@ function CompleteProfileForm() {
         console.log("Compte enfant détecté, pas de création de dossier famille");
       }
 
-      // Appel Edge Function Sendy factorisé (remis en place)
+      // Appel Edge Function Sendy factorisé avec les données à jour de l'utilisateur
       try {
-        await callSendyEdgeFunction("sync-sendy-brand", {
+        const result = await callSendyEdgeFunction("sync-sendy-brand", {
           id: user.id,
           prenom: formData.prenom.trim(),
           nom: formData.nom.trim(),
           entreprise: formData.entreprise.trim(),
           email: user.email
         });
+        
+        console.log("Synchro Sendy Brand réussie:", result);
       } catch (sendyErr) {
         // On ignore les erreurs côté Sendy pour ne pas bloquer l'utilisateur
         console.error("Erreur non bloquante lors de la synchro Sendy:", sendyErr);
