@@ -393,26 +393,3 @@ function CompleteProfileForm() {
     </>
   )
 }
-
-// Composant principal avec Suspense
-export default function CompleteProfilePage() {
-  return (
-    <ClientOnly>
-      <Suspense fallback={<div>Chargement...</div>}>
-        <CompleteProfileForm />
-      </Suspense>
-    </ClientOnly>
-  )
-}
-}
-
-// Composant principal avec Suspense
-export default function CompleteProfilePage() {
-  return (
-    <ClientOnly>
-      <Suspense fallback={<div>Chargement...</div>}>
-        <CompleteProfileForm />
-      </Suspense>
-    </ClientOnly>
-  )
-}
