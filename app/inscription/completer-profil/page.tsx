@@ -135,13 +135,18 @@ function CompleteProfileForm() {
       await refreshUserData();
 
       // Appel Edge Function Sendy factorisé (remis en place)
-      await callSendyEdgeFunction("sync-sendy-brand", {
-        id: user.id,
-        prenom: formData.prenom.trim(),
-        nom: formData.nom.trim(),
-        entreprise: formData.entreprise.trim(),
-        email: user.email
-      });
+      try {
+        await callSendyEdgeFunction("sync-sendy-brand", {
+          id: user.id,
+          prenom: formData.prenom.trim(),
+          nom: formData.nom.trim(),
+          entreprise: formData.entreprise.trim(),
+          email: user.email
+        });
+      } catch (sendyErr) {
+        // On ignore les erreurs côté Sendy pour ne pas bloquer l'utilisateur
+        console.error("Erreur non bloquante lors de la synchro Sendy:", sendyErr);
+      }
 
       // Récupère la ligne "Aucune liste" créée automatiquement par le trigger
       const { data: aucuneListe, error: listError } = await supabase
@@ -167,11 +172,16 @@ function CompleteProfileForm() {
 
       // Appelle la Edge Function pour créer la liste dans Sendy
       if (aucuneListe && sendy_brand_id) {
-        await callSendyEdgeFunction("sync-sendy-lists", {
-          id: aucuneListe.id,
-          nom: aucuneListe.nom,
-          sendy_brand_id
-        });
+        try {
+          await callSendyEdgeFunction("sync-sendy-lists", {
+            id: aucuneListe.id,
+            nom: aucuneListe.nom,
+            sendy_brand_id
+          });
+        } catch (sendyErr) {
+          // Ignorer les erreurs pour ne pas bloquer l'expérience utilisateur
+          console.error("Erreur non bloquante lors de la synchro liste:", sendyErr);
+        }
       }
 
       window.location.href = "/accueil";

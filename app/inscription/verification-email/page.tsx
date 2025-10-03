@@ -44,6 +44,17 @@ function VerifyEmailContent() {
           const { error } = await supabase.auth.verifyOtp({ token, type: "signup", email })
           setValidating(false)
           if (!error) {
+            // Ajouter la création utilisateur ici pour garantir qu'elle se fait après vérification
+            try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                await supabase.from('Utilisateurs')
+                  .upsert([{ id: currentUser.id, email: currentUser.email }], { onConflict: 'id' });
+              }
+            } catch (err) {
+              console.error("Erreur lors de la création de l'utilisateur:", err);
+            }
+            
             setValidated(true)
             setTimeout(() => router.replace("/inscription/completer-profil"), 1500)
           } else {
