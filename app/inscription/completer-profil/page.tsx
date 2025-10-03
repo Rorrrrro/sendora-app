@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 // Initialiser le client Supabase tout en haut du module
 const supabase = createBrowserClient();
 
-// Composant séparé pour gérer useSearchParams
-function CompleteProfileForm() {
+// Composant principal de la page
+export default function CompleteProfilePage() {
   const router = useRouter()
   const { user, refreshUserData } = useUser()
   const [formData, setFormData] = useState({
@@ -260,137 +260,141 @@ function CompleteProfileForm() {
   }
 
   return (
-    <>
-      {showSuccess && (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
-            <h2 className="text-2xl font-bold text-green-700 mb-2">Compte activé !</h2>
-            <p className="text-gray-700">Votre compte a été créé avec succès.<br />Complétez maintenant votre profil pour commencer.</p>
-            {successCountdown <= 3 && successCountdown > 0 && (
-              <div className="mt-4 text-gray-500 text-sm">Redirection dans {successCountdown}…</div>
-            )}
-          </div>
-        </div>
-      )}
-      {!showSuccess && (
-        <div className="flex min-h-screen bg-gray-50">
-          {/* Left side - Logo and branding */}
-          <div className="hidden w-1/2 bg-primary/10 lg:block">
-            <div className="flex h-full flex-col items-center justify-center p-12">
-              <img src="/Sendora.png" alt="Sendora Logo" className="mb-8 h-24 w-auto" />
-              <p className="mt-2 text-center text-lg text-gray-600">
-                Plus qu'une étape pour commencer à utiliser Sendora et profiter de toutes ses fonctionnalités.
-              </p>
+    <ClientOnly>
+      <Suspense fallback={<div>Chargement...</div>}>
+        <>
+          {showSuccess && (
+            <div className="flex min-h-screen items-center justify-center bg-gray-50">
+              <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
+                <h2 className="text-2xl font-bold text-green-700 mb-2">Compte activé !</h2>
+                <p className="text-gray-700">Votre compte a été créé avec succès.<br />Complétez maintenant votre profil pour commencer.</p>
+                {successCountdown <= 3 && successCountdown > 0 && (
+                  <div className="mt-4 text-gray-500 text-sm">Redirection dans {successCountdown}…</div>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Right side - Complete profile form */}
-          <div className="flex w-full flex-col justify-center p-8 lg:w-1/2">
-            {/* Mobile logo */}
-            <div className="mb-10 flex flex-col items-center lg:hidden">
-              <img src="/Sendora.png" alt="Sendora Logo" className="mb-4 h-20 w-auto" />
-            </div>
-
-            <div className="mx-auto w-full max-w-md">
-              <div className="mb-8 text-center">
-                <h2 className="text-3xl font-bold text-gray-900">Complétez votre profil</h2>
-                <p className="mt-2 text-gray-600">Ajoutez vos informations pour personnaliser votre expérience</p>
+          )}
+          {!showSuccess && (
+            <div className="flex min-h-screen bg-gray-50">
+              {/* Left side - Logo and branding */}
+              <div className="hidden w-1/2 bg-primary/10 lg:block">
+                <div className="flex h-full flex-col items-center justify-center p-12">
+                  <img src="/Sendora.png" alt="Sendora Logo" className="mb-8 h-24 w-auto" />
+                  <p className="mt-2 text-center text-lg text-gray-600">
+                    Plus qu'une étape pour commencer à utiliser Sendora et profiter de toutes ses fonctionnalités.
+                  </p>
+                </div>
               </div>
 
-              <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
-                <form className="space-y-6" onSubmit={handleSubmit}>
-                  <div>
-                    <label htmlFor="prenom" className="block text-sm font-medium text-gray-700">
-                      Prénom <span className="text-red-600">*</span>
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        id="prenom"
-                        name="prenom"
-                        type="text"
-                        value={formData.prenom}
-                        onChange={handleChange}
-                        className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
-                      />
-                      <div style={{ minHeight: 20 }}>
-                        {errorMessage === "Le prénom est requis" && (
-                          <p className="text-xs text-red-600">Le prénom est requis</p>
-                        )}
-                      </div>
-                    </div>
+              {/* Right side - Complete profile form */}
+              <div className="flex w-full flex-col justify-center p-8 lg:w-1/2">
+                {/* Mobile logo */}
+                <div className="mb-10 flex flex-col items-center lg:hidden">
+                  <img src="/Sendora.png" alt="Sendora Logo" className="mb-4 h-20 w-auto" />
+                </div>
+
+                <div className="mx-auto w-full max-w-md">
+                  <div className="mb-8 text-center">
+                    <h2 className="text-3xl font-bold text-gray-900">Complétez votre profil</h2>
+                    <p className="mt-2 text-gray-600">Ajoutez vos informations pour personnaliser votre expérience</p>
                   </div>
 
-                  <div>
-                    <label htmlFor="nom" className="block text-sm font-medium text-gray-700">
-                      Nom <span className="text-red-600">*</span>
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        id="nom"
-                        name="nom"
-                        type="text"
-                        value={formData.nom}
-                        onChange={handleChange}
-                        className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
-                      />
-                      <div style={{ minHeight: 20 }}>
-                        {errorMessage === "Le nom est requis" && (
-                          <p className="text-xs text-red-600">Le nom est requis</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="entreprise" className="block text-sm font-medium text-gray-700">
-                      Nom de l&apos;entreprise <span className="text-red-600">*</span>
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        id="entreprise"
-                        name="entreprise"
-                        type="text"
-                        value={formData.entreprise}
-                        onChange={handleChange}
-                        className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
-                      />
-                      <div style={{ minHeight: 20 }}>
-                        {errorMessage === "Le nom de l'entreprise est requis" && (
-                          <p className="text-xs text-red-600">Le nom de l'entreprise est requis</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {errorMessage && errorMessage !== "Le prénom est requis" && errorMessage !== "Le nom est requis" && errorMessage !== "Le nom de l'entreprise est requis" && (
-                    <div className="rounded-md bg-red-50 p-4">
-                      <div className="flex">
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">Erreur</h3>
-                          <div className="mt-2 text-sm text-red-700">
-                            <p>{errorMessage}</p>
+                  <div className="rounded-xl bg-[#FFFEFF] p-8 shadow-lg">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                      <div>
+                        <label htmlFor="prenom" className="block text-sm font-medium text-gray-700">
+                          Prénom <span className="text-red-600">*</span>
+                        </label>
+                        <div className="mt-1">
+                          <input
+                            id="prenom"
+                            name="prenom"
+                            type="text"
+                            value={formData.prenom}
+                            onChange={handleChange}
+                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
+                          />
+                          <div style={{ minHeight: 20 }}>
+                            {errorMessage === "Le prénom est requis" && (
+                              <p className="text-xs text-red-600">Le prénom est requis</p>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="flex w-full justify-center rounded-xl border border-[#6c43e0] bg-[#6c43e0] px-4 py-3 text-base font-bold text-white shadow-sm hover:bg-[#4f32a7] hover:border-[#4f32a7] transition-colors focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLoading ? "Mise à jour..." : "Mettre à jour mon profil"}
-                    </button>
+                      <div>
+                        <label htmlFor="nom" className="block text-sm font-medium text-gray-700">
+                          Nom <span className="text-red-600">*</span>
+                        </label>
+                        <div className="mt-1">
+                          <input
+                            id="nom"
+                            name="nom"
+                            type="text"
+                            value={formData.nom}
+                            onChange={handleChange}
+                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
+                          />
+                          <div style={{ minHeight: 20 }}>
+                            {errorMessage === "Le nom est requis" && (
+                              <p className="text-xs text-red-600">Le nom est requis</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="entreprise" className="block text-sm font-medium text-gray-700">
+                          Nom de l&apos;entreprise <span className="text-red-600">*</span>
+                        </label>
+                        <div className="mt-1">
+                          <input
+                            id="entreprise"
+                            name="entreprise"
+                            type="text"
+                            value={formData.entreprise}
+                            onChange={handleChange}
+                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-0 sm:text-sm"
+                          />
+                          <div style={{ minHeight: 20 }}>
+                            {errorMessage === "Le nom de l'entreprise est requis" && (
+                              <p className="text-xs text-red-600">Le nom de l'entreprise est requis</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {errorMessage && errorMessage !== "Le prénom est requis" && errorMessage !== "Le nom est requis" && errorMessage !== "Le nom de l'entreprise est requis" && (
+                        <div className="rounded-md bg-red-50 p-4">
+                          <div className="flex">
+                            <div className="ml-3">
+                              <h3 className="text-sm font-medium text-red-800">Erreur</h3>
+                              <div className="mt-2 text-sm text-red-700">
+                                <p>{errorMessage}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="flex w-full justify-center rounded-xl border border-[#6c43e0] bg-[#6c43e0] px-4 py-3 text-base font-bold text-white shadow-sm hover:bg-[#4f32a7] hover:border-[#4f32a7] transition-colors focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? "Mise à jour..." : "Mettre à jour mon profil"}
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-      {showCreating && <></>}
-    </>
+          )}
+          {showCreating && <></>}
+        </>
+      </Suspense>
+    </ClientOnly>
   )
 }
