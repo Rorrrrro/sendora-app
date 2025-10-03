@@ -7,10 +7,12 @@ import { useUser } from "@/contexts/user-context"
 import ClientOnly from "@/components/ClientOnly"
 import { callSendyEdgeFunction } from "@/lib/sendyEdge";
 
-// Désactiver le prérendering pour cette page
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-export const revalidate = 0;
+// Pour Next.js 13+
+export const config = {
+  unstable_runtimeJS: true,
+  unstable_JsPreload: false,
+  runtime: 'edge',
+}
 
 // Initialiser le client Supabase tout en haut du module
 const supabase = createBrowserClient();
@@ -398,17 +400,3 @@ function CompleteProfileForm() {
     </>
   )
 }
-
-// Composant principal avec Suspense - pas de export default ici
-function CompleteProfilePage() {
-  return (
-    <ClientOnly>
-      <Suspense fallback={<div>Chargement...</div>}>
-        <CompleteProfileForm />
-      </Suspense>
-    </ClientOnly>
-  );
-}
-
-// Export avec déclaration explicite que c'est un client component
-export default CompleteProfilePage;
