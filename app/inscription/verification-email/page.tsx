@@ -5,7 +5,8 @@ import { createBrowserClient } from "@/lib/supabase"
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
-  const email = searchParams.get("email")
+  const emailRaw = searchParams.get("email")
+  const email = emailRaw ? decodeURIComponent(emailRaw) : null
   const token = searchParams.get("token")
   const type = searchParams.get("type")
   const router = useRouter()
@@ -38,20 +39,24 @@ function VerifyEmailContent() {
       if (token && type) {
         setValidating(true)
         const supabase = createBrowserClient()
-        if (type === 'email' && email) {
-          const { error } = await supabase.auth.verifyOtp({ token, type: type as any, email })
+        if ((type === 'email' || type === 'signup') && email) {
+          const { error } = await supabase.auth.verifyOtp({ token, type: "signup", email })
           setValidating(false)
           if (!error) {
             setValidated(true)
             setTimeout(() => router.replace("/inscription/completer-profil"), 1500)
+          } else {
+            // Redirection vers la page erreur-lien en cas d'échec
+            router.replace(`/erreur-lien?type=signup&reason=expired`)
           }
         } else {
           setValidating(false)
+          router.replace(`/erreur-lien?type=signup&reason=invalid`)
         }
       }
     }
     validateToken()
-  }, [token, type, router])
+  }, [token, type, router, email])
 
   const handleResend = async () => {
     // Appliquer le blocage local uniquement si on clique sur 'Renvoyer l'email'
@@ -154,4 +159,4 @@ export default function VerifyEmailPage() {
       <VerifyEmailContent />
     </Suspense>
   )
-} 
+}
