@@ -1,3 +1,4 @@
+// MARKER: rv-123456
 "use client";
 
 import { useRef, useEffect, useState } from "react";
@@ -9,6 +10,8 @@ declare global {
   interface Window {
     UIEditor?: any;
     StripoEditorApi?: any;
+    __stripoFetchGuard?: boolean;
+    __stripoObserver?: MutationObserver | null;
   }
 }
 
@@ -28,6 +31,9 @@ export default function StripoEditor() {
   const templateName = searchParams.get("name") || "Sans nom";
   const mode = searchParams.get("mode") || "new";
   const [familleId, setFamilleId] = useState<string | null>(null);
+
+  // Ajout de la clé client unique
+  const key = familleId ?? user?.id ?? "1";
 
   useEffect(() => {
     if (!user) {
@@ -51,48 +57,87 @@ export default function StripoEditor() {
   }, [user, supabase, router]);
 
   useEffect(() => {
+    // Attendre que familleId soit défini
+    if (!familleId) return;
+
     // Nettoyage préalable
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
     }
-    
-    // Supprimer le script existant s'il existe
     const existingScript = document.getElementById('UiEditorScript');
     if (existingScript && existingScript.parentNode) {
       existingScript.parentNode.removeChild(existingScript);
     }
 
-    // Fonction de requête
-    function request(
-      method: string,
-      url: string,
-      data: any,
-      callback: (response: string) => void,
-      errorCallback?: (error: Error) => void
-    ) {
-      const req = new XMLHttpRequest();
-      req.onreadystatechange = function() {
-        if (req.readyState === 4) {
-          if (req.status >= 200 && req.status < 300) {
-            callback(req.responseText);
-          } else if (errorCallback) {
-            errorCallback(new Error(`Request failed with status ${req.status}: ${req.responseText}`));
-          }
+    // --- Guard réseau plus robuste ---
+    if (!window.__stripoFetchGuard) {
+      window.__stripoFetchGuard = true;
+      const origFetch = window.fetch;
+      
+      window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+        let url: string | undefined;
+        if (typeof input === "string" || input instanceof URL) {
+          url = input.toString();
+        } else if (input instanceof Request) {
+          url = input.url;
         }
-      };
-      req.onerror = function() {
-        if (errorCallback) {
-          errorCallback(new Error("Connection failed"));
+        
+        // Bloquer tous les appels documents
+        if (url && (url.includes("/api/v1/documents/") || url.includes("/documents/page?"))) {
+          console.log("Blocked fetch:", url);
+          return Promise.resolve(new Response(
+            JSON.stringify({ items: [], page: 0, total: 0 }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          ));
         }
+        return origFetch.call(window, input, init);
       };
-      req.open(method, url, true);
-      if (method !== 'GET') {
-        req.setRequestHeader('content-type', 'application/json');
-      }
-      req.send(data);
-    }
 
-    // Chargement du template existant ou du template vide
+      // Intercepte XMLHttpRequest de manière plus agressive
+      const OrigXHR = window.XMLHttpRequest;
+      
+      function GuardedXHR(this: XMLHttpRequest) {
+        const xhr = new OrigXHR();
+        let intercepted = false;
+        const origOpen = xhr.open;
+        
+        xhr.open = function(method: string, url: string, async: boolean = true, username?: string | null, password?: string | null): void {
+          if (typeof url === "string" && (url.includes("/api/v1/documents/") || url.includes("/documents/page?"))) {
+            console.log("Blocked XHR:", url);
+            intercepted = true;
+            setTimeout(() => {
+              try { Object.defineProperty(xhr, "readyState", { value: 4, configurable: true }); } catch {}
+              try { Object.defineProperty(xhr, "status", { value: 200, configurable: true }); } catch {}
+              try { Object.defineProperty(xhr, "responseText", { value: JSON.stringify({ items: [], page: 0, total: 0 }), configurable: true }); } catch {}
+              try { Object.defineProperty(xhr, "response", { value: JSON.stringify({ items: [], page: 0, total: 0 }), configurable: true }); } catch {}
+              try { Object.defineProperty(xhr, "responseType", { value: "json", configurable: true }); } catch {}
+              if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange.call(xhr, new Event("readystatechange") as any);
+              if (typeof xhr.onload === "function") xhr.onload.call(xhr, new Event("load") as any);
+              if (typeof xhr.dispatchEvent === "function") {
+                try { xhr.dispatchEvent(new Event("load")); } catch {}
+              }
+            }, 10);
+            return;
+          }
+          
+          return origOpen.call(xhr, method, url, async, username ?? null, password ?? null);
+        };
+        
+        const origSend = xhr.send;
+        
+        xhr.send = function(body?: Document | XMLHttpRequestBodyInit | null): void {
+          if (intercepted) return;
+          return origSend.call(xhr, body ?? null);
+        };
+        
+        return xhr;
+      };
+
+      window.XMLHttpRequest = GuardedXHR as any;
+    }
+    // --- Fin guard réseau ---
+
+    // Fonction pour charger le template existant ou vide
     async function loadTemplate() {
       if (mode === "edit" && templateId && familleId) {
         try {
@@ -102,22 +147,17 @@ export default function StripoEditor() {
             .eq('id', templateId)
             .eq('famille_id', familleId)
             .single();
-          
           if (error) {
             console.error("Erreur de chargement du template:", error);
             loadEmptyTemplate();
             return;
           }
-          
           if (template) {
             let htmlCode = template.html_code || '';
             let cssCode = '';
-            
-            // Extraire CSS si présent
             if (template.design_json && template.design_json.css) {
               cssCode = template.design_json.css;
             }
-            
             initPlugin({ html: htmlCode, css: cssCode });
           } else {
             loadEmptyTemplate();
@@ -127,198 +167,197 @@ export default function StripoEditor() {
           loadEmptyTemplate();
         }
       } else {
-        // En mode création, charger un template vide
         loadEmptyTemplate();
       }
     }
 
-    // Fonction pour charger un template Stripo minimal mais fonctionnel
+    // Template vide - conserver le template existant
     function loadEmptyTemplate() {
       // Blank template officiel Stripo
       const emptyTemplate = {
         html: `
-<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
-  <head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <meta name="x-apple-disable-message-reformatting">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta content="telephone=no" name="format-detection">
-    <title></title>
-    <!--[if (mso 16)]>
-    <style type="text/css">
-    a {text-decoration: none;}
-    </style>
-    <![endif]-->
-    <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]-->
-    <!--[if gte mso 9]>
-<noscript>
-         <xml>
-           <o:OfficeDocumentSettings>
-           <o:AllowPNG></o:AllowPNG>
-           <o:PixelsPerInch>96</o:PixelsPerInch>
-           </o:OfficeDocumentSettings>
-         </xml>
-      </noscript>
-<![endif]-->
-    <!--[if mso]><xml>
-    <w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word">
-      <w:DontUseAdvancedTypographyReadingMail/>
-    </w:WordDocument>
-    </xml><![endif]-->
-  </head>
-  <body class="body">
-    <div dir="ltr" class="es-wrapper-color">
-      <!--[if gte mso 9]>
-			<v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t">
-				<v:fill type="tile" color="#f6f6f6"></v:fill>
-			</v:background>
-		<![endif]-->
-      <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper">
-        <tbody>
-          <tr>
-            <td valign="top" class="esd-email-paddings">
-              <table cellspacing="0" cellpadding="0" align="center" class="esd-header-popover es-header">
-                <tbody>
-                  <tr>
-                    <td align="center" class="esd-stripe">
-                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-header-body">
-                        <tbody>
-                          <tr>
-                            <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
-                              <!--[if mso]><table width="560" cellpadding="0"
-                            cellspacing="0"><tr><td width="180" valign="top"><![endif]-->
-                              <table cellspacing="0" cellpadding="0" align="left" class="es-left">
-                                <tbody>
-                                  <tr>
-                                    <td width="180" valign="top" align="center" class="es-m-p20b esd-container-frame">
-                                      <table width="100%" cellspacing="0" cellpadding="0">
-                                        <tbody>
-                                          <tr>
-                                            <td align="center" class="esd-empty-container" style="display:none"></td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                              <!--[if mso]></td><td width="20"></td><td width="360" valign="top"><![endif]-->
-                              <table cellspacing="0" cellpadding="0" align="right" class="es-right">
-                                <tbody>
-                                  <tr>
-                                    <td width="360" align="left" class="esd-container-frame">
-                                      <table width="100%" cellspacing="0" cellpadding="0">
-                                        <tbody>
-                                          <tr>
-                                            <td align="center" class="esd-empty-container" style="display:none"></td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                              <!--[if mso]></td></tr></table><![endif]-->
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table cellspacing="0" cellpadding="0" align="center" class="es-content">
-                <tbody>
-                  <tr>
-                    <td align="center" class="esd-stripe">
-                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-content-body">
-                        <tbody>
-                          <tr>
-                            <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
-                              <table width="100%" cellspacing="0" cellpadding="0">
-                                <tbody>
-                                  <tr>
-                                    <td width="560" valign="top" align="center" class="esd-container-frame">
-                                      <table width="100%" cellspacing="0" cellpadding="0">
-                                        <tbody>
-                                          <tr>
-                                            <td align="center" class="esd-empty-container" style="display:none"></td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table cellspacing="0" cellpadding="0" align="center" class="esd-footer-popover es-footer">
-                <tbody>
-                  <tr>
-                    <td align="center" class="esd-stripe">
-                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-footer-body">
-                        <tbody>
-                          <tr>
-                            <td align="left" class="esd-structure es-p20t es-p20b es-p20r es-p20l">
-                              <!--[if mso]><table width="560" cellpadding="0" 
-                        cellspacing="0"><tr><td width="270" valign="top"><![endif]-->
-                              <table cellspacing="0" cellpadding="0" align="left" class="es-left">
-                                <tbody>
-                                  <tr>
-                                    <td width="270" align="left" class="es-m-p20b esd-container-frame">
-                                      <table width="100%" cellspacing="0" cellpadding="0">
-                                        <tbody>
-                                          <tr>
-                                            <td align="center" class="esd-empty-container" style="display:none"></td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                              <!--[if mso]></td><td width="20"></td><td width="270" valign="top"><![endif]-->
-                              <table cellspacing="0" cellpadding="0" align="right" class="es-right">
-                                <tbody>
-                                  <tr>
-                                    <td width="270" align="left" class="esd-container-frame">
-                                      <table width="100%" cellspacing="0" cellpadding="0">
-                                        <tbody>
-                                          <tr>
-                                            <td align="center" class="esd-empty-container" style="display:none"></td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                              <!--[if mso]></td></tr></table><![endif]-->
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </body>
-</html>
-`,
-        css: ''
-      };
+      <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+        <head>
+          <meta charset="UTF-8">
+          <meta content="width=device-width, initial-scale=1" name="viewport">
+          <meta name="x-apple-disable-message-reformatting">
+          <meta http-equiv="X-UA-Compatible" content="IE=edge">
+          <meta content="telephone=no" name="format-detection">
+          <title></title>
+          <!--[if (mso 16)]>
+          <style type="text/css">
+          a {text-decoration: none;}
+          </style>
+          <![endif]-->
+          <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]-->
+          <!--[if gte mso 9]>
+      <noscript>
+              <xml>
+                <o:OfficeDocumentSettings>
+                <o:AllowPNG></o:AllowPNG>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+                </o:OfficeDocumentSettings>
+              </xml>
+            </noscript>
+      <![endif]-->
+          <!--[if mso]><xml>
+          <w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word">
+            <w:DontUseAdvancedTypographyReadingMail/>
+          </w:WordDocument>
+          </xml><![endif]-->
+        </head>
+        <body class="body">
+          <div dir="ltr" class="es-wrapper-color">
+            <!--[if gte mso 9]>
+            <v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t">
+              <v:fill type="tile" color="#f6f6f6"></v:fill>
+            </v:background>
+          <![endif]-->
+            <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper">
+              <tbody>
+                <tr>
+                  <td valign="top" class="esd-email-paddings">
+                    <table cellspacing="0" cellpadding="0" align="center" class="esd-header-popover es-header">
+                      <tbody>
+                        <tr>
+                          <td align="center" class="esd-stripe">
+                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-header-body">
+                              <tbody>
+                                <tr>
+                                  <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
+                                    <!--[if mso]><table width="560" cellpadding="0"
+                                  cellspacing="0"><tr><td width="180" valign="top"><![endif]-->
+                                    <table cellspacing="0" cellpadding="0" align="left" class="es-left">
+                                      <tbody>
+                                        <tr>
+                                          <td width="180" valign="top" align="center" class="es-m-p20b esd-container-frame">
+                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                    <!--[if mso]></td><td width="20"></td><td width="360" valign="top"><![endif]-->
+                                    <table cellspacing="0" cellpadding="0" align="right" class="es-right">
+                                      <tbody>
+                                        <tr>
+                                          <td width="360" align="left" class="esd-container-frame">
+                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                    <!--[if mso]></td></tr></table><![endif]-->
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellspacing="0" cellpadding="0" align="center" class="es-content">
+                      <tbody>
+                        <tr>
+                          <td align="center" class="esd-stripe">
+                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-content-body">
+                              <tbody>
+                                <tr>
+                                  <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
+                                    <table width="100%" cellspacing="0" cellpadding="0">
+                                      <tbody>
+                                        <tr>
+                                          <td width="560" valign="top" align="center" class="esd-container-frame">
+                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellspacing="0" cellpadding="0" align="center" class="esd-footer-popover es-footer">
+                      <tbody>
+                        <tr>
+                          <td align="center" class="esd-stripe">
+                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-footer-body">
+                              <tbody>
+                                <tr>
+                                  <td align="left" class="esd-structure es-p20t es-p20b es-p20r es-p20l">
+                                    <!--[if mso]><table width="560" cellpadding="0" 
+                              cellspacing="0"><tr><td width="270" valign="top"><![endif]-->
+                                    <table cellspacing="0" cellpadding="0" align="left" class="es-left">
+                                      <tbody>
+                                        <tr>
+                                          <td width="270" align="left" class="es-m-p20b esd-container-frame">
+                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                    <!--[if mso]></td><td width="20"></td><td width="270" valign="top"><![endif]-->
+                                    <table cellspacing="0" cellpadding="0" align="right" class="es-right">
+                                      <tbody>
+                                        <tr>
+                                          <td width="270" align="left" class="esd-container-frame">
+                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                    <!--[if mso]></td></tr></table><![endif]-->
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </body>
+      </html>
+      `,
+              css: ''
+            };
 
       // Configuration optimisée pour Stripo avec options d'adaptation
       const initOptions = {
@@ -336,10 +375,12 @@ export default function StripoEditor() {
         forceRecreate: true,
         userFullName: user?.email || 'Utilisateur',
         // Identifiants uniques
-        metadata: {
-          emailId: `new_template_${Date.now()}`,
-          userId: user?.id || '1',
-          username: user?.email || 'Utilisateur'
+        apiRequestData: {
+          userId: key,
+          role: 'USER',
+          metadata: {
+            emailId: `new_template_${Date.now()}`
+          }
         },
         // Configuration des boutons et panels
         undoRedoButtonsSelector: '.undo-redo-buttons',
@@ -364,156 +405,387 @@ export default function StripoEditor() {
             }
           }
         },
-        // Authentification Stripo
+        // Authentification via ton backend (fetch uniquement)
         onTokenRefreshRequest: function(callback: (token: string) => void) {
-          request(
-            'POST',
-            'https://plugins.stripo.email/api/v1/auth',
-            JSON.stringify({
-              pluginId: '7d640cece238429fa6697bedfb03f9ec',
-              secretKey: 'fc45634b3aa84fa384605a1ac75e4c49',
-              userId: user?.id || '1',
+          fetch('/api/stripo-auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: key,
               role: 'USER'
-            }),
-            function(data) {
-              try {
-                const response = JSON.parse(data);
-                if (response.token) {
-                  callback(response.token);
-                  setIsEditorReady(true);
-                  setError(null);
-                } else {
-                  setError("Erreur : pas de token dans la réponse Stripo.");
-                }
-              } catch (e) {
-                setError("Erreur lors du parsing de la réponse Stripo.");
+            })
+          })
+            .then(res => {
+              if (res.ok) return res.json();
+              // Si la route Next.js n'existe pas, fallback sur auth.php
+              return fetch('https://media.sendora.fr/api/stripo/auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: key,
+                  role: 'USER'
+                })
+              }).then(r => r.json());
+            })
+            .then(data => {
+              if (data.token) {
+                callback(data.token);
+                setIsEditorReady(true);
+                setError(null);
+              } else {
+                setError("Erreur : pas de token dans la réponse du serveur.");
               }
-            },
-            function(error) {
-              setError("Erreur d'authentification Stripo : " + error.message + ". Vérifiez vos clés API.");
-            }
-          );
+            })
+            .catch(err => {
+              setError("Erreur d'authentification Stripo : " + err.message);
+            });
+        },
+        errorHandler: function(error: any) {
+          setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
+        },
+        notifications: {
+          info: (text: string) => console.info(text),
+          error: (text: string) => setError(text),
+          warn: (text: string) => console.warn(text),
+          loader: (text: string) => console.log("Loading:", text),
+          hide: (id: string) => console.log("Hide notification:", id),
+          success: (text: string) => console.log("Success:", text)
         }
       };
 
-      initPlugin(emptyTemplate, initOptions);
+      initPlugin(emptyTemplate);
     }
 
-    // Initialiser Stripo avec options pour contrôler strictement le contenu initial
-    function initPlugin(template: { html: string; css: string }, customOptions?: any) {
+    // Initialisation unique de l'éditeur Stripo avec configurations simplifiées
+    function initPlugin(template: { html: string; css: string }) {
       if (!containerRef.current) return;
+
+      // Générer un ID unique pour chaque session d'édition
+      const uniqueId = Date.now().toString();
+      const emailId = templateId || `new_template_${uniqueId}`;
       
-      const script = document.createElement('script');
-      script.id = 'UiEditorScript';
-      script.type = 'module';
-      script.src = 'https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js';
-      
-      script.onload = function() {
-        if (!window.UIEditor || !containerRef.current) {
-          setError("Erreur: API Stripo non disponible");
+      // Obtenir un token d'authentification avant de charger l'éditeur
+      fetch('/api/stripo-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: familleId || user?.id,
+          role: 'USER'
+        })
+      })
+      .then(res => {
+        if (!res.ok) {
+          // Si la route Next.js échoue, essayer le fallback
+          return fetch('https://media.sendora.fr/api/stripo/auth.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: familleId || user?.id,
+              role: 'USER'
+            })
+          }).then(r => r.json());
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data || !data.token) {
+          setError("Erreur : pas de token dans la réponse du serveur.");
           return;
         }
         
-        try {
-          // Utiliser les options personnalisées si fournies, sinon utiliser des options par défaut
-          const editorOptions = customOptions || {
-            // Options de base
-            html: template.html,
-            css: template.css,
-            locale: 'fr',
-            ignoreTemplateDefaults: true, // Toujours désactiver les templates par défaut
-            metadata: {
-              emailId: templateId || 'new_template',
-              userId: user?.id || '1',
-              username: user?.email || 'Utilisateur Sendora'
-            },
-            onTokenRefreshRequest: function(callback: (token: string) => void) {
-              request(
-                'POST',
-                'https://plugins.stripo.email/api/v1/auth',
-                JSON.stringify({
-                  pluginId: '7d640cece238429fa6697bedfb03f9ec',
-                  secretKey: 'fc45634b3aa84fa384605a1ac75e4c49',
-                  userId: user?.id || '1',
-                  role: 'USER'
-                }),
-                function(data) {
-                  try {
-                    const response = JSON.parse(data);
-                    if (response.token) {
-                      callback(response.token);
-                      setIsEditorReady(true);
-                      setError(null);
-                    } else {
-                      setError("Erreur : pas de token dans la réponse Stripo.");
-                    }
-                  } catch (e) {
-                    setError("Erreur lors du parsing de la réponse Stripo.");
+        console.log("Token d'authentification Stripo obtenu");
+        
+        // Charger le script Stripo avec le token déjà disponible
+        const script = document.createElement('script');
+        script.id = 'UiEditorScript';
+        script.src = 'https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js';
+        
+        script.onload = function() {
+          if (!window.UIEditor || !containerRef.current) {
+            setError("Erreur: API Stripo non disponible");
+            return;
+          }
+
+          // Gestionnaire d'images externe qui remplace la galerie native de Stripo
+          const customImageLibrary = {
+            openDialog: function(callback: (imageInfo: {url: string, alt?: string, title?: string}) => void) {
+              // Ouvrir une modale simple pour sélectionner une image
+              const userId = familleId || user?.id;
+              
+              // Créer une modal d'image simple
+              const modal = document.createElement('div');
+              modal.style.position = 'fixed';
+              modal.style.top = '0';
+              modal.style.left = '0';
+              modal.style.right = '0';
+              modal.style.bottom = '0';
+              modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+              modal.style.zIndex = '10000';
+              modal.style.display = 'flex';
+              modal.style.alignItems = 'center';
+              modal.style.justifyContent = 'center';
+              
+              const content = document.createElement('div');
+              content.style.backgroundColor = 'white';
+              content.style.borderRadius = '8px';
+              content.style.padding = '20px';
+              content.style.width = '80%';
+              content.style.maxWidth = '900px';
+              content.style.maxHeight = '80vh';
+              content.style.overflow = 'auto';
+              
+              const header = document.createElement('div');
+              header.style.display = 'flex';
+              header.style.justifyContent = 'space-between';
+              header.style.marginBottom = '20px';
+              
+              const title = document.createElement('h2');
+              title.textContent = 'Bibliothèque d\'images';
+              title.style.margin = '0';
+              
+              const closeBtn = document.createElement('button');
+              closeBtn.textContent = '✕';
+              closeBtn.style.border = 'none';
+              closeBtn.style.background = 'none';
+              closeBtn.style.fontSize = '20px';
+              closeBtn.style.cursor = 'pointer';
+              closeBtn.onclick = function() {
+                document.body.removeChild(modal);
+              };
+              
+              header.appendChild(title);
+              header.appendChild(closeBtn);
+              
+              const uploader = document.createElement('div');
+              uploader.style.marginBottom = '20px';
+              uploader.style.padding = '15px';
+              uploader.style.border = '2px dashed #ccc';
+              uploader.style.borderRadius = '5px';
+              uploader.style.textAlign = 'center';
+              
+              const uploaderText = document.createElement('p');
+              uploaderText.textContent = 'Déposer une image ou cliquer pour sélectionner';
+              uploaderText.style.margin = '0';
+              
+              const fileInput = document.createElement('input');
+              fileInput.type = 'file';
+              fileInput.accept = 'image/*';
+              fileInput.style.display = 'none';
+              
+              uploader.appendChild(uploaderText);
+              uploader.appendChild(fileInput);
+              
+              uploader.onclick = function() {
+                fileInput.click();
+              };
+              
+              fileInput.onchange = function() {
+                if (fileInput.files && fileInput.files[0]) {
+                  const formData = new FormData();
+                  formData.append('file', fileInput.files[0]);
+                  formData.append('userId', userId || '');
+                  
+                  // Message de téléchargement
+                  const imgGrid = document.getElementById('image-grid');
+                  if (imgGrid) {
+                    const loadingMsg = document.createElement('div');
+                    loadingMsg.id = 'upload-loading';
+                    loadingMsg.textContent = 'Téléchargement en cours...';
+                    loadingMsg.style.padding = '10px';
+                    loadingMsg.style.backgroundColor = '#f3f3f3';
+                    loadingMsg.style.marginBottom = '10px';
+                    loadingMsg.style.borderRadius = '5px';
+                    imgGrid.prepend(loadingMsg);
                   }
-                },
-                function(error) {
-                  setError("Erreur d'authentification Stripo : " + error.message + ". Vérifiez vos clés API.");
+                  
+                  // Upload via votre API
+                  fetch('https://media.sendora.fr/api/stripo/upload.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                      'X-Family-Id': userId || ''
+                    }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.url) {
+                      // Actualiser la liste des images
+                      loadImages();
+                    } else {
+                      alert('Erreur lors du téléchargement: ' + (data.error || 'Erreur inconnue'));
+                    }
+                  })
+                  .catch(err => {
+                    alert('Erreur de téléchargement: ' + err.message);
+                  })
+                  .finally(() => {
+                    const loadingEl = document.getElementById('upload-loading');
+                    if (loadingEl) loadingEl.remove();
+                  });
                 }
-              );
-            },
-            errorHandler: function(error: any) {
-              setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
-            },
-            notifications: {
-              info: (text: string) => console.info(text),
-              error: (text: string) => setError(text),
-              warn: (text: string) => console.warn(text),
-              loader: (text: string) => console.log("Loading:", text),
-              hide: (id: string) => console.log("Hide notification:", id),
-              success: (text: string) => console.log("Success:", text)
+              };
+              
+              const imageGrid = document.createElement('div');
+              imageGrid.id = 'image-grid';
+              imageGrid.style.display = 'grid';
+              imageGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
+              imageGrid.style.gap = '10px';
+              
+              content.appendChild(header);
+              content.appendChild(uploader);
+              content.appendChild(imageGrid);
+              modal.appendChild(content);
+              
+              document.body.appendChild(modal);
+              
+              // Fonction pour charger les images de l'utilisateur
+              function loadImages() {
+                const imgGrid = document.getElementById('image-grid');
+                if (!imgGrid) return;
+                
+                imgGrid.innerHTML = '<div style="text-align:center;padding:20px;">Chargement des images...</div>';
+                
+                fetch(`https://media.sendora.fr/api/stripo/list.php?keys=${userId}`)
+                  .then(response => response.json())
+                  .then(data => {
+                    imgGrid.innerHTML = '';
+                    
+                    if (data && Array.isArray(data.items) && data.items.length > 0) {
+                      data.items.forEach((item: {url: string, name: string}) => {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.style.position = 'relative';
+                        imgContainer.style.border = '1px solid #eee';
+                        imgContainer.style.borderRadius = '4px';
+                        imgContainer.style.overflow = 'hidden';
+                        imgContainer.style.cursor = 'pointer';
+                        
+                        const img = document.createElement('img');
+                        img.src = item.url;
+                        img.alt = item.name || 'Image';
+                        img.style.width = '100%';
+                        img.style.height = '120px';
+                        img.style.objectFit = 'cover';
+                        
+                        const imgName = document.createElement('div');
+                        imgName.textContent = item.name || 'Image';
+                        imgName.style.padding = '5px';
+                        imgName.style.fontSize = '12px';
+                        imgName.style.whiteSpace = 'nowrap';
+                        imgName.style.overflow = 'hidden';
+                        imgName.style.textOverflow = 'ellipsis';
+                        
+                        imgContainer.appendChild(img);
+                        imgContainer.appendChild(imgName);
+                        
+                        imgContainer.onclick = function() {
+                          document.body.removeChild(modal);
+                          callback({
+                            url: item.url,
+                            alt: item.name || 'Image',
+                            title: item.name
+                          });
+                        };
+                        
+                        imgGrid.appendChild(imgContainer);
+                      });
+                    } else {
+                      imgGrid.innerHTML = '<div style="text-align:center;padding:20px;">Aucune image disponible. Ajoutez-en une en utilisant le bouton ci-dessus.</div>';
+                    }
+                  })
+                  .catch(err => {
+                    imgGrid.innerHTML = `<div style="text-align:center;padding:20px;color:#c62828;">Erreur lors du chargement des images: ${err.message}</div>`;
+                  });
+              }
+              
+              // Charger les images immédiatement
+              loadImages();
             }
           };
           
-          console.log('Initialisation de Stripo avec les options:', editorOptions);
-          console.log('HTML template:', template.html);
-          
-          // Modifier les options de l'éditeur pour améliorer la zone d'édition
-          editorOptions.ignoreTemplateDefaults = true;
-          editorOptions.forceRecreate = true;
-          
-          if (mode === 'new') {
-            // Options spéciales pour un nouveau template
-            editorOptions.adaptToScreenSize = true;
-            editorOptions.responsiveEmail = true;
-            editorOptions.adaptiveTemplateSelector = true;
-          }
-          
-          // Initialiser l'éditeur avec nos options
-          window.UIEditor.initEditor(
-            containerRef.current,
-            editorOptions
-          );
-          
-          // Tentative de correction après l'initialisation
-          setTimeout(() => {
-            if (window.StripoEditorApi && window.StripoEditorApi.actionsApi) {
-              console.log('StripoEditorApi est disponible');
+          // Configuration simplifiée avec externalImagesLibrary
+          const editorConfig = {
+            token: data.token,  // Utiliser directement le token préchargé
+            html: template.html,
+            css: template.css,
+            locale: 'fr',
+            displayMode: 'email',
+            adaptToScreenSize: true,
+            responsiveEmail: true,
+            ampEmail: false,
+            absoluteContentWidth: 600,
+            userFullName: user?.email || 'Utilisateur',
+            
+            // Remplacer la galerie d'images native par notre implémentation
+            externalImagesLibrary: customImageLibrary,
+            
+            // Masquer les onglets inutiles par CSS
+            customCSS: `
+              [data-test="DOCUMENTS"], [data-test="TEMPLATES"] { display: none !important; }
+              .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], 
+              .es-plugin-ui-tabs__tab:nth-child(2) { display: none !important; }
+            `,
+            appearance: {
+              theme: 'light',
+              panels: {
+                tools: { dock: 'left', width: '280px' },
+                content: { expanded: true, width: '70%' },
+                settings: { dock: 'right', collapsed: false }
+              }
+            },
+            apiRequestData: {
+              userId: familleId || user?.id,
+              role: 'USER',
+              metadata: {
+                emailId: emailId
+              }
+            },
+            onReady: function() {
               setIsEditorReady(true);
-            } else {
-              console.log('StripoEditorApi non disponible après initialisation');
+              setError(null);
+              console.log("Stripo Editor prêt");
+            },
+            onError: function(error: any) {
+              setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
             }
-          }, 1000);
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          setError(`Erreur d'initialisation: ${errorMessage}`);
-        }
-      };
-      
-      script.onerror = function() {
-        setError("Impossible de charger l'éditeur Stripo");
-      };
-      
-      document.body.appendChild(script);
+          };
+
+          console.log("Initialisation de l'éditeur Stripo avec:", editorConfig);
+          
+          try {
+            window.UIEditor.initEditor(
+              containerRef.current,
+              editorConfig
+            );
+            
+            // Observer pour masquer les onglets non désirés
+            const observer = new MutationObserver(() => {
+              document.querySelectorAll('[data-test="DOCUMENTS"], [data-test="TEMPLATES"], .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], .es-plugin-ui-tabs__tab:nth-child(2)').forEach(el => {
+                (el as HTMLElement).style.display = "none";
+              });
+            });
+            
+            observer.observe(document.body, { childList: true, subtree: true });
+            window.__stripoObserver = observer;
+          } catch (err) {
+            console.error("Erreur lors de l'initialisation de l'éditeur:", err);
+            setError(`Erreur d'initialisation: ${(err as Error).message}`);
+          }
+        };
+
+        script.onerror = function() {
+          setError("Impossible de charger le script Stripo");
+        };
+
+        document.body.appendChild(script);
+      })
+      .catch(err => {
+        setError("Erreur d'authentification: " + err.message);
+        console.error("Erreur d'authentification:", err);
+      });
     }
 
-    if (familleId) {
-      loadTemplate();
-    }
+    // Initialiser uniquement quand familleId est défini
+    loadTemplate();
 
     return () => {
       if (window.StripoEditorApi && typeof window.StripoEditorApi.destroy === 'function') {
@@ -523,10 +795,14 @@ export default function StripoEditor() {
           console.error("Erreur lors du nettoyage de l'éditeur:", e);
         }
       }
-      
       const scriptToRemove = document.getElementById('UiEditorScript');
       if (scriptToRemove && scriptToRemove.parentNode) {
         scriptToRemove.parentNode.removeChild(scriptToRemove);
+      }
+      // Nettoyage du MutationObserver
+      if (window.__stripoObserver) {
+        window.__stripoObserver.disconnect();
+        window.__stripoObserver = null;
       }
     };
   }, [templateId, familleId, mode, user]);
