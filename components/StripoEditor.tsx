@@ -495,10 +495,11 @@ export default function StripoEditor() {
               ampEmail: false,
               absoluteContentWidth: 600,
               userFullName: user?.email || 'Utilisateur',
+              metadata: { emailId }, // <-- AJOUT ICI AU NIVEAU RACINE
               apiRequestData: {
                 userId: familleId || user?.id,
                 role: 'USER',
-                metadata: { emailId } // <-- Toujours l'id du template Supabase
+                metadata: { emailId }
               },
               onTokenRefreshRequest: function(callback: (token: string) => void) {
                 fetch('/api/stripo-auth', {
