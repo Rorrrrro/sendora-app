@@ -32,6 +32,7 @@ export default function TemplatesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const rowsPerPage = 10
   
   useEffect(() => {
@@ -61,6 +62,26 @@ export default function TemplatesPage() {
     }
   }
   
+  const handleDeleteTemplate = async (id: string) => {
+    setDeletingId(id)
+    try {
+      const { error } = await createBrowserClient()
+        .from("Templates")
+        .delete()
+        .eq("id", id)
+      if (error) {
+        alert("Erreur lors de la suppression du template.")
+      } else {
+        setTemplates((prev) => prev.filter((t) => t.id !== id))
+      }
+    } catch (err) {
+      alert("Erreur lors de la suppression.")
+    } finally {
+      setDeletingId(null)
+      setOpenMenuId(null)
+    }
+  }
+
   const filteredTemplates = templates.filter(
     (template) => template.nom?.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -143,6 +164,36 @@ export default function TemplatesPage() {
                           hover:bg-[#f4f4fd] hover:border-[#6C43E0] shadow-sm hover:shadow-md`}
                       >
                         <div className="flex items-center justify-start flex-1 min-w-0 mr-4 gap-8">
+                          {/* Aperçu miniature HTML */}
+                          <div className="flex flex-col gap-2.5 w-[90px]">
+                            <span className="text-xs text-muted-foreground font-medium">APERÇU</span>
+                            <div
+                              className="rounded-lg border border-[#e0e0e0] bg-white overflow-hidden flex items-center justify-center"
+                              style={{ width: 90, height: 180, boxShadow: "0 1px 4px #e0e0e0", pointerEvents: "none" }}
+                            >
+                              {template.html_code ? (
+                                <iframe
+                                  srcDoc={template.html_code}
+                                  style={{
+                                    width: "375px", // largeur mobile
+                                    height: "667px", // hauteur mobile
+                                    border: "none",
+                                    zoom: 0.24, // 90/375 ≈ 0.24
+                                    pointerEvents: "none",
+                                    background: "#fff",
+                                    display: "block"
+                                  }}
+                                  sandbox="allow-same-origin"
+                                  title={`Aperçu ${template.nom}`}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                                  Pas d’aperçu
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
                           <div className="flex flex-col gap-2.5 w-[250px]">
                             <span className="text-xs text-muted-foreground font-medium">NOM</span>
                             <div className="font-semibold text-base text-[#23272f] truncate" title={template.nom}>{template.nom}</div>
@@ -203,9 +254,11 @@ export default function TemplatesPage() {
                                   size="sm"
                                   className="w-full flex items-center justify-center gap-2 h-8 font-semibold rounded-lg bg-[#d21c3c] border-[#d21c3c] hover:bg-[#b81a34] hover:border-[#b81a34] hover:opacity-90 text-[16px] transition focus:outline-none focus:ring-0"
                                   style={{ minWidth: 0 }}
+                                  disabled={deletingId === template.id}
+                                  onClick={() => handleDeleteTemplate(template.id)}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
-                                  Supprimer
+                                  {deletingId === template.id ? "Suppression..." : "Supprimer"}
                                 </Button>
                               </div>
                             </DropdownMenuContent>
