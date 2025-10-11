@@ -378,7 +378,7 @@ export default function StripoEditor() {
           userId: key,
           role: 'USER',
           metadata: {
-            emailId: `new_template_${Date.now()}`
+            emailId: templateId ? templateId : `tmp_${Date.now()}`
           }
         },
         // Configuration des boutons et panels
@@ -453,9 +453,9 @@ export default function StripoEditor() {
     function initPlugin(template: { html: string; css: string }) {
       if (!containerRef.current) return;
 
-      // Générer un ID unique pour chaque session d'édition
-      const uniqueId = Date.now().toString();
-      const emailId = templateId || `new_template_${uniqueId}`;
+      // emailId selon édition ou création
+      const emailId = templateId ? templateId : `tmp_${Date.now()}`;
+      console.log("Initialisation avec emailId:", emailId);
       
       // Obtenir un token d'authentification avant de charger l'éditeur
       // Utiliser UNIQUEMENT la route API locale pour éviter les problèmes CORS
@@ -748,6 +748,7 @@ export default function StripoEditor() {
                 settings: { dock: 'right', collapsed: false }
               }
             },
+            // IMPORTANT: Structure correcte pour apiRequestData
             apiRequestData: {
               userId: familleId || user?.id,
               role: 'USER',
