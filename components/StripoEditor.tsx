@@ -33,6 +33,8 @@ export default function StripoEditor() {
 
   // Ajout de la clé client unique
   const key = familleId ?? user?.id ?? "1";
+  // emailId = id du template Supabase
+  const emailId = templateId;
 
   useEffect(() => {
     if (!user) {
@@ -378,7 +380,7 @@ export default function StripoEditor() {
           userId: key,
           role: 'USER',
           metadata: {
-            emailId: templateId ? templateId : `tmp_${Date.now()}`
+            emailId // <-- Toujours l'id du template Supabase
           }
         },
         // Configuration des boutons et panels
@@ -414,14 +416,10 @@ export default function StripoEditor() {
               role: 'USER'
             })
           })
-          .then(res => {
-            if (!res.ok) {
-              throw new Error(`Erreur d'authentification (${res.status})`);
-            }
-            return res.json();
-          })
+          .then(res => res.json())
           .then(data => {
             if (data.token) {
+              // Toujours passer metadata avec emailId lors du refresh
               callback(data.token);
               setIsEditorReady(true);
               setError(null);
@@ -453,12 +451,12 @@ export default function StripoEditor() {
     function initPlugin(template: { html: string; css: string }) {
       if (!containerRef.current) return;
 
-      // emailId selon édition ou création
-      const emailId = templateId ? templateId : `tmp_${Date.now()}`;
-      console.log("Initialisation avec emailId:", emailId);
-      
-      // Obtenir un token d'authentification avant de charger l'éditeur
-      // Utiliser UNIQUEMENT la route API locale pour éviter les problèmes CORS
+      // Vérification stricte de l'id
+      if (!emailId) {
+        setError("Erreur : emailId (id du template) manquant dans l'URL.");
+        return;
+      }
+
       fetch('/api/stripo-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -467,326 +465,82 @@ export default function StripoEditor() {
           role: 'USER'
         })
       })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Erreur d'authentification (${res.status})`);
-        }
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        if (!data || !data.token) {
+        if (!data?.token) {
           setError("Erreur : pas de token dans la réponse du serveur.");
           return;
         }
-        
-        console.log("Token d'authentification Stripo obtenu");
-        
-        // Charger le script Stripo avec le token déjà disponible
+
         const script = document.createElement('script');
         script.id = 'UiEditorScript';
         script.src = 'https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js';
-        
+
         script.onload = function() {
           if (!window.UIEditor || !containerRef.current) {
             setError("Erreur: API Stripo non disponible");
             return;
           }
 
-          // Gestionnaire d'images externe qui remplace la galerie native de Stripo
-          const customImageLibrary = {
-            openDialog: function(callback: (imageInfo: {url: string, alt?: string, title?: string}) => void) {
-              // Ouvrir une modale simple pour sélectionner une image
-              const userId = familleId || user?.id;
-              
-              // Créer une modal d'image simple
-              const modal = document.createElement('div');
-              modal.style.position = 'fixed';
-              modal.style.top = '0';
-              modal.style.left = '0';
-              modal.style.right = '0';
-              modal.style.bottom = '0';
-              modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-              modal.style.zIndex = '10000';
-              modal.style.display = 'flex';
-              modal.style.alignItems = 'center';
-              modal.style.justifyContent = 'center';
-              
-              const content = document.createElement('div');
-              content.style.backgroundColor = 'white';
-              content.style.borderRadius = '8px';
-              content.style.padding = '20px';
-              content.style.width = '80%';
-              content.style.maxWidth = '900px';
-              content.style.maxHeight = '80vh';
-              content.style.overflow = 'auto';
-              
-              const header = document.createElement('div');
-              header.style.display = 'flex';
-              header.style.justifyContent = 'space-between';
-              header.style.marginBottom = '20px';
-              
-              const title = document.createElement('h2');
-              title.textContent = 'Bibliothèque d\'images';
-              title.style.margin = '0';
-              
-              const closeBtn = document.createElement('button');
-              closeBtn.textContent = '✕';
-              closeBtn.style.border = 'none';
-              closeBtn.style.background = 'none';
-              closeBtn.style.fontSize = '20px';
-              closeBtn.style.cursor = 'pointer';
-              closeBtn.onclick = function() {
-                document.body.removeChild(modal);
-              };
-              
-              header.appendChild(title);
-              header.appendChild(closeBtn);
-              
-              const uploader = document.createElement('div');
-              uploader.style.marginBottom = '20px';
-              uploader.style.padding = '15px';
-              uploader.style.border = '2px dashed #ccc';
-              uploader.style.borderRadius = '5px';
-              uploader.style.textAlign = 'center';
-              
-              const uploaderText = document.createElement('p');
-              uploaderText.textContent = 'Déposer une image ou cliquer pour sélectionner';
-              uploaderText.style.margin = '0';
-              
-              const fileInput = document.createElement('input');
-              fileInput.type = 'file';
-              fileInput.accept = 'image/*';
-              fileInput.style.display = 'none';
-              
-              uploader.appendChild(uploaderText);
-              uploader.appendChild(fileInput);
-              
-              uploader.onclick = function() {
-                fileInput.click();
-              };
-              
-              fileInput.onchange = function() {
-                if (fileInput.files && fileInput.files[0]) {
-                  const formData = new FormData();
-                  formData.append('file', fileInput.files[0]);
-                  formData.append('userId', userId || '');
-                  
-                  // Message de téléchargement
-                  const imgGrid = document.getElementById('image-grid');
-                  if (imgGrid) {
-                    const loadingMsg = document.createElement('div');
-                    loadingMsg.id = 'upload-loading';
-                    loadingMsg.textContent = 'Téléchargement en cours...';
-                    loadingMsg.style.padding = '10px';
-                    loadingMsg.style.backgroundColor = '#f3f3f3';
-                    loadingMsg.style.marginBottom = '10px';
-                    loadingMsg.style.borderRadius = '5px';
-                    imgGrid.prepend(loadingMsg);
-                  }
-                  
-                  // Upload via votre API
-                  fetch('https://media.sendora.fr/api/stripo/upload.php', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                      'X-Family-Id': userId || ''
-                    }
+          window.UIEditor.initEditor(
+            containerRef.current,
+            {
+              token: data.token,
+              html: template.html,
+              css: template.css,
+              locale: 'fr',
+              displayMode: 'email',
+              adaptToScreenSize: true,
+              responsiveEmail: true,
+              ampEmail: false,
+              absoluteContentWidth: 600,
+              userFullName: user?.email || 'Utilisateur',
+              apiRequestData: {
+                userId: familleId || user?.id,
+                role: 'USER',
+                metadata: { emailId } // <-- Toujours l'id du template Supabase
+              },
+              onTokenRefreshRequest: function(callback: (token: string) => void) {
+                fetch('/api/stripo-auth', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: familleId || user?.id,
+                    role: 'USER'
                   })
-                  .then(response => response.json())
-                  .then(data => {
-                    if (data.url) {
-                      // Actualiser la liste des images
-                      loadImages();
-                    } else {
-                      alert('Erreur lors du téléchargement: ' + (data.error || 'Erreur inconnue'));
-                    }
-                  })
-                  .catch(err => {
-                    alert('Erreur de téléchargement: ' + err.message);
-                  })
-                  .finally(() => {
-                    const loadingEl = document.getElementById('upload-loading');
-                    if (loadingEl) loadingEl.remove();
-                  });
-                }
-              };
-              
-              const imageGrid = document.createElement('div');
-              imageGrid.id = 'image-grid';
-              imageGrid.style.display = 'grid';
-              imageGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
-              imageGrid.style.gap = '10px';
-              
-              content.appendChild(header);
-              content.appendChild(uploader);
-              content.appendChild(imageGrid);
-              modal.appendChild(content);
-              
-              document.body.appendChild(modal);
-              
-              // Fonction pour charger les images de l'utilisateur
-              function loadImages() {
-                const imgGrid = document.getElementById('image-grid');
-                if (!imgGrid) return;
-                
-                imgGrid.innerHTML = '<div style="text-align:center;padding:20px;">Chargement des images...</div>';
-                
-                fetch(`https://media.sendora.fr/api/stripo/list.php?keys=${userId}`)
-                  .then(response => response.json())
-                  .then(data => {
-                    imgGrid.innerHTML = '';
-                    
-                    if (data && Array.isArray(data.items) && data.items.length > 0) {
-                      data.items.forEach((item: {url: string, name: string}) => {
-                        const imgContainer = document.createElement('div');
-                        imgContainer.style.position = 'relative';
-                        imgContainer.style.border = '1px solid #eee';
-                        imgContainer.style.borderRadius = '4px';
-                        imgContainer.style.overflow = 'hidden';
-                        imgContainer.style.cursor = 'pointer';
-                        
-                        const img = document.createElement('img');
-                        img.src = item.url;
-                        img.alt = item.name || 'Image';
-                        img.style.width = '100%';
-                        img.style.height = '120px';
-                        img.style.objectFit = 'cover';
-                        
-                        const imgName = document.createElement('div');
-                        imgName.textContent = item.name || 'Image';
-                        imgName.style.padding = '5px';
-                        imgName.style.fontSize = '12px';
-                        imgName.style.whiteSpace = 'nowrap';
-                        imgName.style.overflow = 'hidden';
-                        imgName.style.textOverflow = 'ellipsis';
-                        
-                        imgContainer.appendChild(img);
-                        imgContainer.appendChild(imgName);
-                        
-                        imgContainer.onclick = function() {
-                          document.body.removeChild(modal);
-                          callback({
-                            url: item.url,
-                            alt: item.name || 'Image',
-                            title: item.name
-                          });
-                        };
-                        
-                        imgGrid.appendChild(imgContainer);
-                      });
-                    } else {
-                      imgGrid.innerHTML = '<div style="text-align:center;padding:20px;">Aucune image disponible. Ajoutez-en une en utilisant le bouton ci-dessus.</div>';
-                    }
-                  })
-                  .catch(err => {
-                    imgGrid.innerHTML = `<div style="text-align:center;padding:20px;color:#c62828;">Erreur lors du chargement des images: ${err.message}</div>`;
-                  });
-              }
-              
-              // Charger les images immédiatement
-              loadImages();
-            }
-          };
-          
-          // Configuration simplifiée avec externalImagesLibrary
-          const editorConfig = {
-            // Garder le token préchargé comme config initiale
-            token: data.token,
-            html: template.html,
-            css: template.css,
-            locale: 'fr',
-            displayMode: 'email',
-            adaptToScreenSize: true,
-            responsiveEmail: true,
-            ampEmail: false,
-            absoluteContentWidth: 600,
-            userFullName: user?.email || 'Utilisateur',
-            
-            // IMPORTANT: Ajouter également la méthode de rafraîchissement du token
-            onTokenRefreshRequest: function(callback: (token: string) => void) {
-              fetch('/api/stripo-auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: familleId || user?.id,
-                  role: 'USER'
                 })
-              })
-              .then(res => {
-                if (!res.ok) {
-                  throw new Error(`Erreur d'authentification (${res.status})`);
+                .then(res => res.json())
+                .then(data => {
+                  if (data.token) {
+                    // Toujours passer metadata avec emailId lors du refresh
+                    callback(data.token);
+                  }
+                  else setError("Erreur : pas de token dans la réponse du serveur.");
+                })
+                .catch(err => setError("Erreur d'authentification Stripo : " + err.message));
+              },
+              customCSS: `
+                [data-test="DOCUMENTS"], [data-test="TEMPLATES"] { display: none !important; }
+                .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], 
+                .es-plugin-ui-tabs__tab:nth-child(2) { display: none !important; }
+              `,
+              appearance: {
+                theme: 'light',
+                panels: {
+                  tools: { dock: 'left', width: '280px' },
+                  content: { expanded: true, width: '70%' },
+                  settings: { dock: 'right', collapsed: false }
                 }
-                return res.json();
-              })
-              .then(data => {
-                if (data.token) {
-                  callback(data.token);
-                } else {
-                  setError("Erreur : pas de token dans la réponse du serveur.");
-                }
-              })
-              .catch(err => {
-                setError("Erreur d'authentification Stripo : " + err.message);
-                console.error("Erreur d'authentification:", err);
-              });
-            },
-            
-            // Remplacer la galerie d'images native par notre implémentation
-            externalImagesLibrary: customImageLibrary,
-            
-            // Masquer les onglets inutiles par CSS
-            customCSS: `
-              [data-test="DOCUMENTS"], [data-test="TEMPLATES"] { display: none !important; }
-              .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], 
-              .es-plugin-ui-tabs__tab:nth-child(2) { display: none !important; }
-            `,
-            appearance: {
-              theme: 'light',
-              panels: {
-                tools: { dock: 'left', width: '280px' },
-                content: { expanded: true, width: '70%' },
-                settings: { dock: 'right', collapsed: false }
+              },
+              onReady: function() {
+                setIsEditorReady(true);
+                setError(null);
+              },
+              onError: function(error: any) {
+                setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
               }
-            },
-            // IMPORTANT: Structure correcte pour apiRequestData
-            apiRequestData: {
-              userId: familleId || user?.id,
-              role: 'USER',
-              metadata: {
-                emailId: emailId
-              }
-            },
-            onReady: function() {
-              setIsEditorReady(true);
-              setError(null);
-              console.log("Stripo Editor prêt");
-            },
-            onError: function(error: any) {
-              setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
             }
-          };
-
-          console.log("Initialisation de l'éditeur Stripo avec:", editorConfig);
-          
-          try {
-            window.UIEditor.initEditor(
-              containerRef.current,
-              editorConfig
-            );
-            
-            // Observer pour masquer les onglets non désirés
-            const observer = new MutationObserver(() => {
-              document.querySelectorAll('[data-test="DOCUMENTS"], [data-test="TEMPLATES"], .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], .es-plugin-ui-tabs__tab:nth-child(2)').forEach(el => {
-                (el as HTMLElement).style.display = "none";
-              });
-            });
-            
-            observer.observe(document.body, { childList: true, subtree: true });
-            window.__stripoObserver = observer;
-          } catch (err) {
-            console.error("Erreur lors de l'initialisation de l'éditeur:", err);
-            setError(`Erreur d'initialisation: ${(err as Error).message}`);
-          }
+          );
         };
 
         script.onerror = function() {
@@ -795,10 +549,7 @@ export default function StripoEditor() {
 
         document.body.appendChild(script);
       })
-      .catch(err => {
-        setError("Erreur d'authentification: " + err.message);
-        console.error("Erreur d'authentification:", err);
-      });
+      .catch(err => setError("Erreur d'authentification: " + err.message));
     }
 
     // Initialiser uniquement quand familleId est défini

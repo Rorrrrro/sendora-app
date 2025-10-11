@@ -7,12 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { PlusCircle, FileCode, Copy as CloneIcon, History } from "lucide-react";
 import { AppLayout } from "@/components/dashboard-layout";
+import { createBrowserClient } from "@/lib/supabase";
+import { useUser } from "@/contexts/user-context";
 
 const CreateTemplatePage: React.FC = () => {
   const router = useRouter();
   const [templateName, setTemplateName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const supabase = createBrowserClient();
+  const { user } = useUser();
 
   useEffect(() => {
     if (inputRef.current) {
@@ -20,9 +24,50 @@ const CreateTemplatePage: React.FC = () => {
     }
   }, []);
 
-  const handleCreateFromScratch = () => {
+  const handleCreateFromScratch = async () => {
     if (!validateTemplateName()) return;
-    router.push(`/templates/editeur?name=${encodeURIComponent(templateName)}&mode=new`);
+    setIsSubmitting(true);
+    try {
+      // Récupération du user et famille_id (logique page Contact)
+      let familleId = user?.compte_parent_id;
+      if (!familleId) familleId = user?.id ?? "";
+
+      const createdBy = user?.id ?? "";
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("Templates")
+        .insert({
+          nom: templateName,
+          html_code: "",
+          design_json: {},
+          created_by: createdBy,
+          famille_id: familleId,
+          created_at: now,
+          updated_at: now,
+        })
+        .select("id")
+        .single();
+
+      if (error || !data?.id) {
+        console.error("Supabase error:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de créer le template.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.push(`/templates/editeur?id=${data.id}&name=${encodeURIComponent(templateName)}&mode=edit`);
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    }
   };
 
   const handleCreateFromTemplate = () => {
@@ -137,6 +182,3 @@ const CreateTemplatePage: React.FC = () => {
 };
 
 export default CreateTemplatePage;
-
-
-
