@@ -24,6 +24,22 @@ interface Template {
   created_at: string
 }
 
+function useDevicePreview() {
+  const [device, setDevice] = useState<"mobile" | "tablet" | "desktop">("desktop")
+  useEffect(() => {
+    function handleResize() {
+      const w = window.innerWidth
+      if (w < 640) setDevice("mobile")
+      else if (w < 1024) setDevice("tablet")
+      else setDevice("desktop")
+    }
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+  return device
+}
+
 export default function TemplatesPage() {
   const router = useRouter()
   const { user } = useUser()
@@ -34,6 +50,7 @@ export default function TemplatesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const rowsPerPage = 10
+  const device = useDevicePreview()
   
   useEffect(() => {
     if (user) {
@@ -145,12 +162,12 @@ export default function TemplatesPage() {
             </div>
 
             {loading ? (
-              <TableSkeleton columns={3} rows={4} />
+              <TableSkeleton columns={2} rows={2} />
             ) : (
               <div className="mt-6">
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {paginatedTemplates.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
                       {searchTerm
                         ? "Aucun template trouvé pour cette recherche."
                         : "Aucun template trouvé. Créez votre premier template !"}
@@ -159,53 +176,11 @@ export default function TemplatesPage() {
                     paginatedTemplates.map((template) => (
                       <div
                         key={template.id}
-                        className={`flex items-center justify-between rounded-2xl border px-6 py-4 transition-all group
-                          bg-[#FAFAFD] border-[#E0E1E1]
-                          hover:bg-[#f4f4fd] hover:border-[#6C43E0] shadow-sm hover:shadow-md`}
+                        className="relative flex flex-col rounded-2xl border bg-[#FAFAFD] border-[#E0E1E1] shadow-sm hover:shadow-md transition-all p-4
+                          h-[260px] min-h-[260px] sm:h-[300px] sm:min-h-[300px] lg:h-[340px] lg:min-h-[340px]"
                       >
-                        <div className="flex items-center justify-start flex-1 min-w-0 mr-4 gap-8">
-                          {/* Aperçu miniature HTML */}
-                          <div className="flex flex-col gap-2.5 w-[90px]">
-                            <span className="text-xs text-muted-foreground font-medium">APERÇU</span>
-                            <div
-                              className="rounded-lg border border-[#e0e0e0] bg-white overflow-hidden flex items-center justify-center"
-                              style={{ width: 90, height: 180, boxShadow: "0 1px 4px #e0e0e0", pointerEvents: "none" }}
-                            >
-                              {template.html_code ? (
-                                <iframe
-                                  srcDoc={template.html_code}
-                                  style={{
-                                    width: "375px", // largeur mobile
-                                    height: "667px", // hauteur mobile
-                                    border: "none",
-                                    zoom: 0.24, // 90/375 ≈ 0.24
-                                    pointerEvents: "none",
-                                    background: "#fff",
-                                    display: "block"
-                                  }}
-                                  sandbox="allow-same-origin"
-                                  title={`Aperçu ${template.nom}`}
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                                  Pas d’aperçu
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col gap-2.5 w-[250px]">
-                            <span className="text-xs text-muted-foreground font-medium">NOM</span>
-                            <div className="font-semibold text-base text-[#23272f] truncate" title={template.nom}>{template.nom}</div>
-                          </div>
-                          
-                          <div className="flex flex-col gap-2.5 w-[120px]">
-                            <span className="text-xs text-muted-foreground font-medium">DATE DE CRÉATION</span>
-                            <span className="text-base text-[#23272f]">{formatDate(template.created_at)}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center">
+                        {/* Menu ... en haut à droite */}
+                        <div className="absolute top-4 right-4 z-10">
                           <DropdownMenu
                             onOpenChange={(open) => setOpenMenuId(open ? template.id : null)}
                           >
@@ -220,21 +195,15 @@ export default function TemplatesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
-                              >
+                              <DropdownMenuItem className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition">
                                 <Eye className="h-4 w-4" />
                                 Aperçu
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
-                              >
+                              <DropdownMenuItem className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition">
                                 <Pencil className="h-4 w-4" />
                                 Modifier
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
-                              >
+                              <DropdownMenuItem className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition">
                                 <Copy className="h-4 w-4" />
                                 Dupliquer
                               </DropdownMenuItem>
@@ -263,6 +232,56 @@ export default function TemplatesPage() {
                               </div>
                             </DropdownMenuContent>
                           </DropdownMenu>
+                        </div>
+                        {/* Structure avec flex pour garantir la disposition */}
+                        <div className="flex flex-col h-full">
+                          {/* En-tête - réduit davantage à 10% de hauteur */}
+                          <div className="mb-0.5 flex-shrink-0" style={{ height: "10%" }}>
+                            <div className="font-bold text-lg lg:text-xl text-[#23272f] truncate" title={template.nom}>
+                              {template.nom}
+                            </div>
+                          </div>
+                          
+                          {/* Corps avec aperçu - augmenté à 80% de hauteur */}
+                          <div className="flex-grow flex items-center justify-center" style={{ height: "80%" }}>
+                            <div
+                              className="rounded-lg border border-[#e0e0e0] bg-white overflow-hidden flex items-center justify-center box-border"
+                              style={{
+                                boxShadow: "0 1px 4px #e0e0e0",
+                                pointerEvents: "none",
+                                height: "100%",
+                                aspectRatio: "375/667"
+                              }}
+                            >
+                              {template.html_code ? (
+                                <iframe
+                                  srcDoc={template.html_code}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    border: "none",
+                                    zoom: 0.40,
+                                    pointerEvents: "none",
+                                    background: "#fff",
+                                    display: "block"
+                                  }}
+                                  sandbox="allow-same-origin"
+                                  title={`Aperçu ${template.nom}`}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center w-full h-full text-xs text-muted-foreground">
+                                  Pas d'aperçu
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Pied de page avec date - réduit à 10% de hauteur */}
+                          <div className="mt-0.5 flex-shrink-0 pb-1 flex items-end" style={{ height: "10%" }}>
+                            <div className="text-xs text-muted-foreground text-left">
+                              Dernière modification : {formatDate(template.created_at)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -310,3 +329,5 @@ export default function TemplatesPage() {
     </AppLayout>
   )
 }
+
+
