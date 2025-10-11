@@ -690,7 +690,8 @@ export default function StripoEditor() {
           
           // Configuration simplifiée avec externalImagesLibrary
           const editorConfig = {
-            token: data.token,  // Utiliser directement le token préchargé
+            // Garder le token préchargé comme config initiale
+            token: data.token,
             html: template.html,
             css: template.css,
             locale: 'fr',
@@ -700,6 +701,35 @@ export default function StripoEditor() {
             ampEmail: false,
             absoluteContentWidth: 600,
             userFullName: user?.email || 'Utilisateur',
+            
+            // IMPORTANT: Ajouter également la méthode de rafraîchissement du token
+            onTokenRefreshRequest: function(callback: (token: string) => void) {
+              fetch('/api/stripo-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: familleId || user?.id,
+                  role: 'USER'
+                })
+              })
+              .then(res => {
+                if (!res.ok) {
+                  throw new Error(`Erreur d'authentification (${res.status})`);
+                }
+                return res.json();
+              })
+              .then(data => {
+                if (data.token) {
+                  callback(data.token);
+                } else {
+                  setError("Erreur : pas de token dans la réponse du serveur.");
+                }
+              })
+              .catch(err => {
+                setError("Erreur d'authentification Stripo : " + err.message);
+                console.error("Erreur d'authentification:", err);
+              });
+            },
             
             // Remplacer la galerie d'images native par notre implémentation
             externalImagesLibrary: customImageLibrary,

@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     
     // Récupérer et retourner les données JSON
     const data = await response.json();
+    
+    // Si un token est reçu, configurer la méthode de rafraîchissement
+    if (data.token) {
+      // TODO: Implémenter la logique de stockage du token et de la méthode de rafraîchissement
+      console.log('Token reçu:', data.token);
+    }
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('Erreur lors du traitement de la requête:', error);
