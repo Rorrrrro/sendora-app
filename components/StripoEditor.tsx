@@ -1,4 +1,3 @@
-// MARKER: rv-123456
 "use client";
 
 import { useRef, useEffect, useState } from "react";
@@ -405,7 +404,7 @@ export default function StripoEditor() {
             }
           }
         },
-        // Authentification via ton backend (fetch uniquement)
+        // Authentification via UNIQUEMENT notre route API locale
         onTokenRefreshRequest: function(callback: (token: string) => void) {
           fetch('/api/stripo-auth', {
             method: 'POST',
@@ -415,30 +414,24 @@ export default function StripoEditor() {
               role: 'USER'
             })
           })
-            .then(res => {
-              if (res.ok) return res.json();
-              // Si la route Next.js n'existe pas, fallback sur auth.php
-              return fetch('https://media.sendora.fr/api/stripo/auth.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: key,
-                  role: 'USER'
-                })
-              }).then(r => r.json());
-            })
-            .then(data => {
-              if (data.token) {
-                callback(data.token);
-                setIsEditorReady(true);
-                setError(null);
-              } else {
-                setError("Erreur : pas de token dans la réponse du serveur.");
-              }
-            })
-            .catch(err => {
-              setError("Erreur d'authentification Stripo : " + err.message);
-            });
+          .then(res => {
+            if (!res.ok) {
+              throw new Error(`Erreur d'authentification (${res.status})`);
+            }
+            return res.json();
+          })
+          .then(data => {
+            if (data.token) {
+              callback(data.token);
+              setIsEditorReady(true);
+              setError(null);
+            } else {
+              setError("Erreur : pas de token dans la réponse du serveur.");
+            }
+          })
+          .catch(err => {
+            setError("Erreur d'authentification Stripo : " + err.message);
+          });
         },
         errorHandler: function(error: any) {
           setError("Erreur Stripo : " + (error?.message || JSON.stringify(error)));
@@ -465,6 +458,7 @@ export default function StripoEditor() {
       const emailId = templateId || `new_template_${uniqueId}`;
       
       // Obtenir un token d'authentification avant de charger l'éditeur
+      // Utiliser UNIQUEMENT la route API locale pour éviter les problèmes CORS
       fetch('/api/stripo-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -475,15 +469,7 @@ export default function StripoEditor() {
       })
       .then(res => {
         if (!res.ok) {
-          // Si la route Next.js échoue, essayer le fallback
-          return fetch('https://media.sendora.fr/api/stripo/auth.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: familleId || user?.id,
-              role: 'USER'
-            })
-          }).then(r => r.json());
+          throw new Error(`Erreur d'authentification (${res.status})`);
         }
         return res.json();
       })
