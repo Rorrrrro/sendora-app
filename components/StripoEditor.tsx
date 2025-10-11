@@ -83,8 +83,15 @@ export default function StripoEditor() {
           url = input.url;
         }
         
-        // Bloquer tous les appels documents
-        if (url && (url.includes("/api/v1/documents/") || url.includes("/documents/page?"))) {
+        // Bloquer tous les appels documents et customblocks
+        if (
+          url &&
+          (
+            url.includes("/api/v1/documents/") ||
+            url.includes("/documents/page?") ||
+            url.includes("/customblocks/")
+          )
+        ) {
           console.log("Blocked fetch:", url);
           return Promise.resolve(new Response(
             JSON.stringify({ items: [], page: 0, total: 0 }),
@@ -103,7 +110,14 @@ export default function StripoEditor() {
         const origOpen = xhr.open;
         
         xhr.open = function(method: string, url: string, async: boolean = true, username?: string | null, password?: string | null): void {
-          if (typeof url === "string" && (url.includes("/api/v1/documents/") || url.includes("/documents/page?"))) {
+          if (
+            typeof url === "string" &&
+            (
+              url.includes("/api/v1/documents/") ||
+              url.includes("/documents/page?") ||
+              url.includes("/customblocks/")
+            )
+          ) {
             console.log("Blocked XHR:", url);
             intercepted = true;
             setTimeout(() => {
