@@ -74,7 +74,7 @@ export default function StripoEditor() {
     if (!window.__stripoFetchGuard) {
       window.__stripoFetchGuard = true;
       const origFetch = window.fetch;
-      
+
       window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         let url: string | undefined;
         if (typeof input === "string" || input instanceof URL) {
@@ -82,73 +82,46 @@ export default function StripoEditor() {
         } else if (input instanceof Request) {
           url = input.url;
         }
-        
-        // Bloquer tous les appels documents et customblocks
-        if (
-          url &&
-          (
+
+        if (url) {
+          // Blocage documents
+          if (
             url.includes("/api/v1/documents/") ||
-            url.includes("/documents/page?") ||
-            url.includes("/customblocks/")
-          )
-        ) {
-          console.log("Blocked fetch:", url);
-          return Promise.resolve(new Response(
-            JSON.stringify({ items: [], page: 0, total: 0 }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          ));
+            url.includes("/documents/page?")
+          ) {
+            console.log("Blocked fetch:", url);
+            return Promise.resolve(new Response(
+              JSON.stringify({ items: [], page: 0, total: 0 }),
+              { status: 200, headers: { "Content-Type": "application/json" } }
+            ));
+          }
+          // Blocage customblocks categories (array)
+          if (url.includes("/api/v1/customblocks/v1/categories?")) {
+            console.log("Blocked fetch:", url);
+            return Promise.resolve(new Response(
+              JSON.stringify([]),
+              { status: 200, headers: { "Content-Type": "application/json" } }
+            ));
+          }
+          // Blocage customblocks translations (object)
+          if (url.includes("/api/v1/customblocks/v1/categories/translations?")) {
+            console.log("Blocked fetch:", url);
+            return Promise.resolve(new Response(
+              JSON.stringify({}),
+              { status: 200, headers: { "Content-Type": "application/json" } }
+            ));
+          }
+          // Blocage customblocks complet (autres endpoints)
+          if (url.includes("/api/v1/customblocks/")) {
+            console.log("Blocked fetch:", url);
+            return Promise.resolve(new Response(
+              JSON.stringify({}),
+              { status: 200, headers: { "Content-Type": "application/json" } }
+            ));
+          }
         }
         return origFetch.call(window, input, init);
       };
-
-      // Intercepte XMLHttpRequest de manière plus agressive
-      const OrigXHR = window.XMLHttpRequest;
-      
-      function GuardedXHR(this: XMLHttpRequest) {
-        const xhr = new OrigXHR();
-        let intercepted = false;
-        const origOpen = xhr.open;
-        
-        xhr.open = function(method: string, url: string, async: boolean = true, username?: string | null, password?: string | null): void {
-          if (
-            typeof url === "string" &&
-            (
-              url.includes("/api/v1/documents/") ||
-              url.includes("/documents/page?") ||
-              url.includes("/customblocks/")
-            )
-          ) {
-            console.log("Blocked XHR:", url);
-            intercepted = true;
-            setTimeout(() => {
-              try { Object.defineProperty(xhr, "readyState", { value: 4, configurable: true }); } catch {}
-              try { Object.defineProperty(xhr, "status", { value: 200, configurable: true }); } catch {}
-              try { Object.defineProperty(xhr, "responseText", { value: JSON.stringify({ items: [], page: 0, total: 0 }), configurable: true }); } catch {}
-              try { Object.defineProperty(xhr, "response", { value: JSON.stringify({ items: [], page: 0, total: 0 }), configurable: true }); } catch {}
-              try { Object.defineProperty(xhr, "responseType", { value: "json", configurable: true }); } catch {}
-              if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange.call(xhr, new Event("readystatechange") as any);
-              if (typeof xhr.onload === "function") xhr.onload.call(xhr, new Event("load") as any);
-              if (typeof xhr.dispatchEvent === "function") {
-                try { xhr.dispatchEvent(new Event("load")); } catch {}
-              }
-            }, 10);
-            return;
-          }
-          
-          return origOpen.call(xhr, method, url, async, username ?? null, password ?? null);
-        };
-        
-        const origSend = xhr.send;
-        
-        xhr.send = function(body?: Document | XMLHttpRequestBodyInit | null): void {
-          if (intercepted) return;
-          return origSend.call(xhr, body ?? null);
-        };
-        
-        return xhr;
-      };
-
-      window.XMLHttpRequest = GuardedXHR as any;
     }
     // --- Fin guard réseau ---
 
@@ -162,17 +135,22 @@ export default function StripoEditor() {
             .eq('id', templateId)
             .eq('famille_id', familleId)
             .single();
+          
           if (error) {
             console.error("Erreur de chargement du template:", error);
             loadEmptyTemplate();
             return;
           }
+          
           if (template) {
             let htmlCode = template.html_code || '';
             let cssCode = '';
+            
+            // Extraire CSS si présent
             if (template.design_json && template.design_json.css) {
               cssCode = template.design_json.css;
             }
+            
             initPlugin({ html: htmlCode, css: cssCode });
           } else {
             loadEmptyTemplate();
@@ -182,197 +160,198 @@ export default function StripoEditor() {
           loadEmptyTemplate();
         }
       } else {
+        // En mode création, charger un template vide
         loadEmptyTemplate();
       }
     }
 
-    // Template vide - conserver le template existant
+    // Fonction pour charger un template Stripo minimal mais fonctionnel
     function loadEmptyTemplate() {
       // Blank template officiel Stripo
       const emptyTemplate = {
         html: `
-      <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
-        <head>
-          <meta charset="UTF-8">
-          <meta content="width=device-width, initial-scale=1" name="viewport">
-          <meta name="x-apple-disable-message-reformatting">
-          <meta http-equiv="X-UA-Compatible" content="IE=edge">
-          <meta content="telephone=no" name="format-detection">
-          <title></title>
-          <!--[if (mso 16)]>
-          <style type="text/css">
-          a {text-decoration: none;}
-          </style>
-          <![endif]-->
-          <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]-->
-          <!--[if gte mso 9]>
-      <noscript>
-              <xml>
-                <o:OfficeDocumentSettings>
-                <o:AllowPNG></o:AllowPNG>
-                <o:PixelsPerInch>96</o:PixelsPerInch>
-                </o:OfficeDocumentSettings>
-              </xml>
-            </noscript>
-      <![endif]-->
-          <!--[if mso]><xml>
-          <w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word">
-            <w:DontUseAdvancedTypographyReadingMail/>
-          </w:WordDocument>
-          </xml><![endif]-->
-        </head>
-        <body class="body">
-          <div dir="ltr" class="es-wrapper-color">
-            <!--[if gte mso 9]>
-            <v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t">
-              <v:fill type="tile" color="#f6f6f6"></v:fill>
-            </v:background>
-          <![endif]-->
-            <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper">
-              <tbody>
-                <tr>
-                  <td valign="top" class="esd-email-paddings">
-                    <table cellspacing="0" cellpadding="0" align="center" class="esd-header-popover es-header">
-                      <tbody>
-                        <tr>
-                          <td align="center" class="esd-stripe">
-                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-header-body">
-                              <tbody>
-                                <tr>
-                                  <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
-                                    <!--[if mso]><table width="560" cellpadding="0"
-                                  cellspacing="0"><tr><td width="180" valign="top"><![endif]-->
-                                    <table cellspacing="0" cellpadding="0" align="left" class="es-left">
-                                      <tbody>
-                                        <tr>
-                                          <td width="180" valign="top" align="center" class="es-m-p20b esd-container-frame">
-                                            <table width="100%" cellspacing="0" cellpadding="0">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                    <!--[if mso]></td><td width="20"></td><td width="360" valign="top"><![endif]-->
-                                    <table cellspacing="0" cellpadding="0" align="right" class="es-right">
-                                      <tbody>
-                                        <tr>
-                                          <td width="360" align="left" class="esd-container-frame">
-                                            <table width="100%" cellspacing="0" cellpadding="0">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                    <!--[if mso]></td></tr></table><![endif]-->
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <table cellspacing="0" cellpadding="0" align="center" class="es-content">
-                      <tbody>
-                        <tr>
-                          <td align="center" class="esd-stripe">
-                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-content-body">
-                              <tbody>
-                                <tr>
-                                  <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
-                                    <table width="100%" cellspacing="0" cellpadding="0">
-                                      <tbody>
-                                        <tr>
-                                          <td width="560" valign="top" align="center" class="esd-container-frame">
-                                            <table width="100%" cellspacing="0" cellpadding="0">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <table cellspacing="0" cellpadding="0" align="center" class="esd-footer-popover es-footer">
-                      <tbody>
-                        <tr>
-                          <td align="center" class="esd-stripe">
-                            <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-footer-body">
-                              <tbody>
-                                <tr>
-                                  <td align="left" class="esd-structure es-p20t es-p20b es-p20r es-p20l">
-                                    <!--[if mso]><table width="560" cellpadding="0" 
-                              cellspacing="0"><tr><td width="270" valign="top"><![endif]-->
-                                    <table cellspacing="0" cellpadding="0" align="left" class="es-left">
-                                      <tbody>
-                                        <tr>
-                                          <td width="270" align="left" class="es-m-p20b esd-container-frame">
-                                            <table width="100%" cellspacing="0" cellpadding="0">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                    <!--[if mso]></td><td width="20"></td><td width="270" valign="top"><![endif]-->
-                                    <table cellspacing="0" cellpadding="0" align="right" class="es-right">
-                                      <tbody>
-                                        <tr>
-                                          <td width="270" align="left" class="esd-container-frame">
-                                            <table width="100%" cellspacing="0" cellpadding="0">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" class="esd-empty-container" style="display:none"></td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                    <!--[if mso]></td></tr></table><![endif]-->
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </body>
-      </html>
-      `,
-              css: ''
-            };
+<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+  <head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta content="telephone=no" name="format-detection">
+    <title></title>
+    <!--[if (mso 16)]>
+    <style type="text/css">
+    a {text-decoration: none;}
+    </style>
+    <![endif]-->
+    <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]-->
+    <!--[if gte mso 9]>
+<noscript>
+         <xml>
+           <o:OfficeDocumentSettings>
+           <o:AllowPNG></o:AllowPNG>
+           <o:PixelsPerInch>96</o:PixelsPerInch>
+           </o:OfficeDocumentSettings>
+         </xml>
+      </noscript>
+<![endif]-->
+    <!--[if mso]><xml>
+    <w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word">
+      <w:DontUseAdvancedTypographyReadingMail/>
+    </w:WordDocument>
+    </xml><![endif]-->
+  </head>
+  <body class="body">
+    <div dir="ltr" class="es-wrapper-color">
+      <!--[if gte mso 9]>
+			<v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t">
+				<v:fill type="tile" color="#f6f6f6"></v:fill>
+			</v:background>
+		<![endif]-->
+      <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper">
+        <tbody>
+          <tr>
+            <td valign="top" class="esd-email-paddings">
+              <table cellspacing="0" cellpadding="0" align="center" class="esd-header-popover es-header">
+                <tbody>
+                  <tr>
+                    <td align="center" class="esd-stripe">
+                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-header-body">
+                        <tbody>
+                          <tr>
+                            <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
+                              <!--[if mso]><table width="560" cellpadding="0"
+                            cellspacing="0"><tr><td width="180" valign="top"><![endif]-->
+                              <table cellspacing="0" cellpadding="0" align="left" class="es-left">
+                                <tbody>
+                                  <tr>
+                                    <td width="180" valign="top" align="center" class="es-m-p20b esd-container-frame">
+                                      <table width="100%" cellspacing="0" cellpadding="0">
+                                        <tbody>
+                                          <tr>
+                                            <td align="center" class="esd-empty-container" style="display:none"></td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              <!--[if mso]></td><td width="20"></td><td width="360" valign="top"><![endif]-->
+                              <table cellspacing="0" cellpadding="0" align="right" class="es-right">
+                                <tbody>
+                                  <tr>
+                                    <td width="360" align="left" class="esd-container-frame">
+                                      <table width="100%" cellspacing="0" cellpadding="0">
+                                        <tbody>
+                                          <tr>
+                                            <td align="center" class="esd-empty-container" style="display:none"></td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              <!--[if mso]></td></tr></table><![endif]-->
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <table cellspacing="0" cellpadding="0" align="center" class="es-content">
+                <tbody>
+                  <tr>
+                    <td align="center" class="esd-stripe">
+                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-content-body">
+                        <tbody>
+                          <tr>
+                            <td align="left" class="es-p20t es-p20r es-p20l esd-structure">
+                              <table width="100%" cellspacing="0" cellpadding="0">
+                                <tbody>
+                                  <tr>
+                                    <td width="560" valign="top" align="center" class="esd-container-frame">
+                                      <table width="100%" cellspacing="0" cellpadding="0">
+                                        <tbody>
+                                          <tr>
+                                            <td align="center" class="esd-empty-container" style="display:none"></td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <table cellspacing="0" cellpadding="0" align="center" class="esd-footer-popover es-footer">
+                <tbody>
+                  <tr>
+                    <td align="center" class="esd-stripe">
+                      <table width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" class="es-footer-body">
+                        <tbody>
+                          <tr>
+                            <td align="left" class="esd-structure es-p20t es-p20b es-p20r es-p20l">
+                              <!--[if mso]><table width="560" cellpadding="0" 
+                        cellspacing="0"><tr><td width="270" valign="top"><![endif]-->
+                              <table cellspacing="0" cellpadding="0" align="left" class="es-left">
+                                <tbody>
+                                  <tr>
+                                    <td width="270" align="left" class="es-m-p20b esd-container-frame">
+                                      <table width="100%" cellspacing="0" cellpadding="0">
+                                        <tbody>
+                                          <tr>
+                                            <td align="center" class="esd-empty-container" style="display:none"></td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              <!--[if mso]></td><td width="20"></td><td width="270" valign="top"><![endif]-->
+                              <table cellspacing="0" cellpadding="0" align="right" class="es-right">
+                                <tbody>
+                                  <tr>
+                                    <td width="270" align="left" class="esd-container-frame">
+                                      <table width="100%" cellspacing="0" cellpadding="0">
+                                        <tbody>
+                                          <tr>
+                                            <td align="center" class="esd-empty-container" style="display:none"></td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              <!--[if mso]></td></tr></table><![endif]-->
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>
+`,
+        css: ''
+      };
 
       // Configuration optimisée pour Stripo avec options d'adaptation
       const initOptions = {
@@ -486,13 +465,93 @@ export default function StripoEditor() {
           return;
         }
 
+        // --- XHR guard pour Stripo (attrape Angular HttpClient) ---
+        (function installStripoXHRGuard() {
+          if ((window as any).__stripoXHRGuardInstalled) return;
+          (window as any).__stripoXHRGuardInstalled = true;
+
+          const OriginalXHR = window.XMLHttpRequest;
+
+          const shouldMock = (url: string) =>
+            url.includes('/api/v1/customblocks/') ||
+            url.includes('/documents/page?') ||
+            url.includes('/api/v1/documents/');
+
+          const mockPayloadFor = (url: string) => {
+            if (url.includes('/categories/translations')) {
+              const fakeCategory = { id: "fake", name: "Catégorie factice" };
+              return { response: [fakeCategory], responseText: JSON.stringify([fakeCategory]) };
+            }
+            if (url.includes('/categories?')) {
+              const fakeCategory = { id: "fake", name: "Catégorie factice" };
+              return { response: [fakeCategory], responseText: JSON.stringify([fakeCategory]) };
+            }
+            if (url.includes('/documents/page?') || url.includes('/api/v1/documents/')) {
+              const obj = { items: [], page: 0, total: 0 };
+              return { response: obj, responseText: JSON.stringify(obj) };
+            }
+            return { response: {}, responseText: JSON.stringify({}) };
+          };
+
+          // Wrapper XHR
+          // @ts-ignore
+          window.XMLHttpRequest = function XHRProxy(this: any) {
+            const xhr = new OriginalXHR();
+
+            let mock = false;
+            let targetUrl = '';
+
+            const origOpen = xhr.open;
+            xhr.open = function(method: string, url: string, async?: boolean, username?: string | null, password?: string | null) {
+              targetUrl = url;
+              mock = shouldMock(url);
+              return origOpen.call(xhr, method, url, async !== undefined ? async : true, username ?? null, password ?? null);
+            };
+
+            const origSend = xhr.send;
+            xhr.send = function(body?: any) {
+              if (!mock) return origSend.call(xhr, body);
+
+              setTimeout(() => {
+                const { response, responseText } = mockPayloadFor(targetUrl);
+                try { Object.defineProperty(xhr, 'readyState', { value: 4 }); } catch {}
+                try { Object.defineProperty(xhr, 'status', { value: 200 }); } catch {}
+                try { Object.defineProperty(xhr, 'responseText', { value: responseText }); } catch {}
+                try { Object.defineProperty(xhr, 'response', { value: response }); } catch {}
+
+                if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange(new ProgressEvent("readystatechange"));
+                if (typeof xhr.onload === "function") xhr.onload(new ProgressEvent("load"));
+                if (typeof xhr.dispatchEvent === "function") {
+                  try { xhr.dispatchEvent(new ProgressEvent("load")); } catch {}
+                }
+              }, 0);
+            };
+
+            return xhr;
+          } as any;
+        })();
+
+        // Bonus anti-bruit zone.js
+        window.addEventListener('unhandledrejection', (e: any) => {
+          const url = e?.reason?.url || '';
+          if (url.includes('/api/v1/customblocks/')) e.preventDefault();
+        });
+        // --- Fin XHR guard ---
+
         const script = document.createElement('script');
         script.id = 'UiEditorScript';
         script.src = 'https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js';
 
         script.onload = function() {
-          if (!window.UIEditor || !containerRef.current) {
-            setError("Erreur: API Stripo non disponible");
+          console.log("Stripo script loaded, initializing editor...");
+          if (!window.UIEditor) {
+            setError("Erreur: API Stripo non disponible (UIEditor manquant)");
+            console.error("Erreur: window.UIEditor manquant");
+            return;
+          }
+          if (!containerRef.current) {
+            setError("Erreur: containerRef manquant");
+            console.error("Erreur: containerRef.current manquant");
             return;
           }
 
