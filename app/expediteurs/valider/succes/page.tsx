@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { CheckCircle2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ValiderExpediteurSucces() {
+function ValiderExpediteurSuccesInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
@@ -47,8 +47,15 @@ export default function ValiderExpediteurSucces() {
           <br />
           Vous pouvez maintenant envoyer des emails avec cette adresse.
         </p>
-        {/* Pas de timer/loader visuel */}
       </div>
     </div>
+  );
+}
+
+export default function ValiderExpediteurSucces() {
+  return (
+    <Suspense>
+      <ValiderExpediteurSuccesInner />
+    </Suspense>
   );
 }
