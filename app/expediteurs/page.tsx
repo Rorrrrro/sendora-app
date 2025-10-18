@@ -113,9 +113,6 @@ export default function ExpediteursPage() {
           <Card className="border-none shadow-sm bg-[#FFFEFF] mt-6">
             <CardHeader className="pb-3">
               <CardDescription />
-              {filtered.length === 0 && !loading ? (
-                <div className="text-center text-muted-foreground py-8">Aucun expéditeur trouvé.</div>
-              ) : null}
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4">
@@ -348,4 +345,4 @@ export default function ExpediteursPage() {
       `}</style>
     </AppLayout>
   );
-} 
+}

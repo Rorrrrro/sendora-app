@@ -29,15 +29,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/erreur-lien', req.url));
   }
 
-  // Mets à jour le statut si pas déjà validé, mais avec un délai
+  // Ne consomme PAS le token ici, ne change que le statut si besoin (optionnel)
   if (data.statut !== 'Vérifié') {
-    setTimeout(async () => {
-      await supabase
-        .from('Expediteurs')
-        .update({ statut: 'Vérifié', token: null })
-        .eq('id', data.id);
-    }, 10000); // 10 secondes
+    await supabase
+      .from('Expediteurs')
+      .update({ statut: 'Vérifié' })
+      .eq('id', data.id);
   }
 
-  return NextResponse.redirect(new URL('/expediteurs/valider/succes', req.url));
+  // Redirige toujours vers la page succès avec le token, l'email et la famille_id dans l'URL
+  return NextResponse.redirect(new URL(`/expediteurs/valider/succes?token=${token}&email=${encodeURIComponent(data.email)}&famille_id=${encodeURIComponent(data.famille_id)}`, req.url));
 }
