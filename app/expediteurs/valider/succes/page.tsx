@@ -2,20 +2,26 @@
 export const dynamic = "force-dynamic";
 
 import { CheckCircle2 } from "lucide-react";
-import { useEffect, Suspense } from "react";
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-function ValiderExpediteurSuccesInner() {
+export default function ValiderExpediteurSucces() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
   const famille_id = searchParams.get("famille_id");
 
   useEffect(() => {
-    console.log("Params:", { token, email, famille_id });
+    // Vérifie qu'on est bien côté client
+    if (typeof window === "undefined") {
+      console.log("Not client, skip timer");
+      return;
+    }
+    console.log("Params (client):", { token, email, famille_id });
     if (!token || !email || !famille_id) return;
     // Timer en background de 10 secondes avant de consommer le token
     const timer = setTimeout(() => {
+      console.log("Consuming token (client)...");
       fetch("/api/expediteur/consume-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -28,7 +34,7 @@ function ValiderExpediteurSuccesInner() {
         .catch((err) => {
           console.error("API consume-token error:", err);
         });
-    }, 10000); // <-- 10 secondes
+    }, 10000);
 
     return () => clearTimeout(timer);
   }, [token, email, famille_id]);
@@ -49,13 +55,5 @@ function ValiderExpediteurSuccesInner() {
         </p>
       </div>
     </div>
-  );
-}
-
-export default function ValiderExpediteurSucces() {
-  return (
-    <Suspense>
-      <ValiderExpediteurSuccesInner />
-    </Suspense>
   );
 }
