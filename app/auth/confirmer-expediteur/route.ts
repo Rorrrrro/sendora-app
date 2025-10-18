@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         .from('Expediteurs')
         .update({ statut: 'Vérifié', token: null })
         .eq('id', data.id);
-    }, 10000); // 10 secondes
+    }, 1000); // 1 secondes
   }
 
   return NextResponse.redirect(new URL('/expediteurs/valider/succes', req.url));
