@@ -14,7 +14,7 @@ function ValiderExpediteurSuccesInner() {
   useEffect(() => {
     console.log("Params:", { token, email, famille_id });
     if (!token || !email || !famille_id) return;
-    // Timer en background de 3 secondes avant de consommer le token
+    // Timer en background de 7 secondes avant de consommer le token
     const timer = setTimeout(() => {
       fetch("/api/expediteur/consume-token", {
         method: "POST",
@@ -28,7 +28,7 @@ function ValiderExpediteurSuccesInner() {
         .catch((err) => {
           console.error("API consume-token error:", err);
         });
-    }, 3000);
+    }, 7000); // <-- 7 secondes
 
     return () => clearTimeout(timer);
   }, [token, email, famille_id]);
