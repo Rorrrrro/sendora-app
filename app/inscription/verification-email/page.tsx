@@ -17,6 +17,10 @@ function VerifyEmailContent() {
   const [validating, setValidating] = useState(false)
   const [cooldown, setCooldown] = useState(60)
   const [localBlock, setLocalBlock] = useState(false)
+  const [showOtpForm, setShowOtpForm] = useState(false)
+  const [otpCode, setOtpCode] = useState("")
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpError, setOtpError] = useState("")
 
   // Gestion du cooldown (compte à rebours)
   useEffect(() => {
@@ -40,14 +44,14 @@ function VerifyEmailContent() {
       if (token && type) {
         setValidating(true)
         const supabase = createBrowserClient()
+        // Utilise le type reçu dans l'URL (email OU signup)
         if ((type === 'email' || type === 'signup') && email) {
-          const { error } = await supabase.auth.verifyOtp({ token, type: "signup", email })
+          const { error } = await supabase.auth.verifyOtp({ token, type, email })
           setValidating(false)
           if (!error) {
             setValidated(true)
             setTimeout(() => router.replace("/inscription/completer-profil"), 1500)
           } else {
-            // Redirection vers la page erreur-lien en cas d'échec
             router.replace(`/erreur-lien?type=signup&reason=expired`)
           }
         } else {
@@ -88,30 +92,57 @@ function VerifyEmailContent() {
     }
   }
 
+  const handleOtpVerify = async () => {
+    setOtpLoading(true)
+    setOtpError("")
+    if (!email || otpCode.length !== 6) {
+      setOtpError("Veuillez entrer le code à 6 chiffres.")
+      setOtpLoading(false)
+      return
+    }
+    try {
+      const supabase = createBrowserClient()
+      const { error } = await supabase.auth.verifyOtp({ token: otpCode, type: "signup", email })
+      if (!error) {
+        setValidated(true)
+        // Création de la ligne utilisateur dans la table Utilisateurs
+        try {
+          let tries = 0
+          let user = null
+          while (!user && tries < 20) {
+            const { data } = await supabase.auth.getUser()
+            user = data?.user
+            if (!user) {
+              await new Promise(r => setTimeout(r, 100))
+              tries++
+            }
+          }
+          if (user) {
+            await supabase
+              .from("Utilisateurs")
+              .insert([{ email: user.email }])
+          }
+        } catch (err) {
+          console.error("Erreur création ligne Utilisateurs après OTP :", err)
+        }
+        // NE PAS remettre otpLoading à false ici
+        setTimeout(() => {
+          window.location.href = "/inscription/completer-profil"
+        }, 1500)
+      } else {
+        setOtpLoading(false)
+        setOtpError("Code invalide ou expiré.")
+      }
+    } catch {
+      setOtpLoading(false)
+      setOtpError("Erreur lors de la vérification.")
+    }
+  }
+
   // Cas 1 : validation via token
   if (token && type) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
-          {validating ? (
-            <>
-              <h1 className="text-2xl font-bold mb-4">Validation en cours...</h1>
-              <p className="mb-4">Merci de patienter.</p>
-            </>
-          ) : validated ? (
-            <>
-              <h1 className="text-2xl font-bold mb-4 text-green-700">Email validé !</h1>
-              <p className="mb-4">Votre email a bien été confirmé.<br />Redirection vers la complétion du profil...</p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold mb-4 text-red-700">Erreur de validation</h1>
-              <p className="mb-4">Le lien de validation est invalide ou a expiré.</p>
-            </>
-          )}
-        </div>
-      </div>
-    )
+    // Ne rien retourner ici, on laisse la logique de redirection gérer la suite
+    return null
   }
 
   // Cas 2 : attente de validation
@@ -121,23 +152,52 @@ function VerifyEmailContent() {
         <h1 className="text-2xl font-bold mb-4">Vérifiez votre email</h1>
         <p className="mb-4">
           Un email de confirmation a été envoyé à <span className="font-semibold">{email}</span>.<br />
-          Cliquez sur le lien reçu pour activer votre compte.
+          Veuillez saisir le code à 6 chiffres reçu par email.
         </p>
         <div className="flex flex-col items-center">
-          <button
-            className={`mt-2 min-w-[180px] px-4 py-2 rounded font-semibold
-              ${resent && cooldown > 0 && !resentError ? 'bg-green-600 text-white' : 'bg-[#6c43e0] text-white'}
-              ${cooldown === 0 && !(resent && cooldown > 0 && !resentError) ? 'hover:bg-[#4f32a7] cursor-pointer' : ''}
-            `}
-            style={{ display: 'block', margin: '0 auto', opacity: (resent && cooldown > 0 && !resentError) ? 1 : undefined, cursor: (resent && cooldown > 0 && !resentError) ? 'default' : undefined }}
-            onClick={handleResend}
-            disabled={cooldown > 0 || localBlock}
-            tabIndex={cooldown > 0 || localBlock ? -1 : 0}
-          >
-            {resent && cooldown > 0 && !resentError ? "Email envoyé !" : "Renvoyer l'email"}
-          </button>
+          {/* Champ OTP + bouton valider */}
+          <div className="mt-2 w-full">
+            <input
+              type="text"
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              className="w-full mb-2 px-4 py-2 border border-gray-300 rounded text-center bg-white transition-colors focus:border-[#6c43e0] hover:border-[#6c43e0] focus:outline-none"
+              placeholder="Code à 6 chiffres"
+              maxLength={6}
+              inputMode="numeric"
+            />
+            <button
+              type="button"
+              disabled={otpLoading || otpCode.length !== 6}
+              className={`flex w-full justify-center rounded-xl border border-[#6c43e0] bg-[#6c43e0] px-4 py-3 text-base font-bold text-white shadow-sm hover:bg-[#4f32a7] hover:border-[#4f32a7] transition-colors focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed`}
+              onClick={handleOtpVerify}
+            >
+              {otpLoading ? "Vérification..." : "Valider le code"}
+            </button>
+            {otpError && <div className="mt-2 text-red-600">{otpError}</div>}
+          </div>
+          {/* Espace entre les boutons */}
+          <div style={{ height: 20 }} />
+          {/* Texte cliquable pour renvoyer l'email */}
+          {resent && cooldown > 0 && !resentError ? (
+            <div className="font-semibold underline text-[#6c43e0] text-base text-center select-none">
+              Email envoyé !
+            </div>
+          ) : (
+            <div
+              className="font-semibold underline text-[#6c43e0] text-base text-center cursor-pointer hover:text-[#4f32a7]"
+              style={{ userSelect: "none" }}
+              onClick={handleResend}
+              tabIndex={0}
+              role="button"
+            >
+              Renvoyer l'email
+            </div>
+          )}
           {resent && cooldown > 0 && !resentError && (
-            <div className="mt-2 text-gray-700 text-sm">Vous pourrez renvoyer un email dans {cooldown} seconde{cooldown > 1 ? 's' : ''}.</div>
+            <div className="mt-2 text-gray-700 text-sm">
+              Vous pourrez renvoyer un email dans {cooldown} seconde{cooldown > 1 ? 's' : ''}.
+            </div>
           )}
           {resentError && <div className="mt-2 text-red-600 text-sm">{resentError}</div>}
         </div>

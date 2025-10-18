@@ -29,13 +29,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/erreur-lien', req.url));
   }
 
-  // Mets à jour le statut si pas déjà validé
+  // Mets à jour le statut si pas déjà validé, mais avec un délai
   if (data.statut !== 'Vérifié') {
-    await supabase
-      .from('Expediteurs')
-      .update({ statut: 'Vérifié', token: null })
-      .eq('id', data.id);
+    setTimeout(async () => {
+      await supabase
+        .from('Expediteurs')
+        .update({ statut: 'Vérifié', token: null })
+        .eq('id', data.id);
+    }, 10000); // 10 secondes
   }
 
   return NextResponse.redirect(new URL('/expediteurs/valider/succes', req.url));
-} 
+}
