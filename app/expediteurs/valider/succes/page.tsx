@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { CheckCircle2 } from "lucide-react";
-import { useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function ValiderExpediteurSuccesInner() {
@@ -10,34 +10,27 @@ function ValiderExpediteurSuccesInner() {
   const token = searchParams.get("token");
   const email = searchParams.get("email");
   const famille_id = searchParams.get("famille_id");
+  const [consumed, setConsumed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Vérifie qu'on est bien côté client
-    if (typeof window === "undefined") {
-      console.log("Not client, skip timer");
-      return;
-    }
-    console.log("Params (client):", { token, email, famille_id });
-    if (!token || !email || !famille_id) return;
-    // Timer en background de 5 secondes avant de consommer le token
-    const timer = setTimeout(() => {
-      console.log("Consuming token (client)...");
-      fetch("/api/expediteur/consume-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email, famille_id }),
+  const handleConsume = () => {
+    setLoading(true);
+    fetch("/api/expediteur/consume-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, email, famille_id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setConsumed(true);
+        setLoading(false);
+        console.log("API consume-token response:", data);
       })
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("API consume-token response:", data);
-        })
-        .catch((err) => {
-          console.error("API consume-token error:", err);
-        });
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [token, email, famille_id]);
+      .catch((err) => {
+        setLoading(false);
+        console.error("API consume-token error:", err);
+      });
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
@@ -53,6 +46,17 @@ function ValiderExpediteurSuccesInner() {
           <br />
           Vous pouvez maintenant envoyer des emails avec cette adresse.
         </p>
+        {!consumed ? (
+          <button
+            className="mt-6 px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700"
+            onClick={handleConsume}
+            disabled={loading}
+          >
+            {loading ? "Validation..." : "Valider définitivement"}
+          </button>
+        ) : (
+          <span className="mt-6 text-green-600 font-semibold">Token consommé !</span>
+        )}
       </div>
     </div>
   );
