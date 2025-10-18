@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { CheckCircle2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ValiderExpediteurSucces() {
+function ValiderExpediteurSuccesInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
@@ -19,7 +19,7 @@ export default function ValiderExpediteurSucces() {
     }
     console.log("Params (client):", { token, email, famille_id });
     if (!token || !email || !famille_id) return;
-    // Timer en background de 10 secondes avant de consommer le token
+    // Timer en background de 5 secondes avant de consommer le token
     const timer = setTimeout(() => {
       console.log("Consuming token (client)...");
       fetch("/api/expediteur/consume-token", {
@@ -34,7 +34,7 @@ export default function ValiderExpediteurSucces() {
         .catch((err) => {
           console.error("API consume-token error:", err);
         });
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [token, email, famille_id]);
@@ -55,5 +55,13 @@ export default function ValiderExpediteurSucces() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ValiderExpediteurSucces() {
+  return (
+    <Suspense>
+      <ValiderExpediteurSuccesInner />
+    </Suspense>
   );
 }
