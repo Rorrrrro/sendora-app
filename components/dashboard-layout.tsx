@@ -122,7 +122,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     className={`flex items-center px-4 py-3 text-base transition-colors rounded-2xl
                       ${isActive
-                        ? "bg-sidebar-selected-bg text-sidebar-active font-bold text-black"
+                        ? "bg-sidebar-selected-bg text-sidebar-active font-bold"
                         : "text-sidebar hover:text-sidebar-active hover:bg-sidebar-hover-bg"}
                     `}
                   >
@@ -158,7 +158,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         href={item.href}
                         className={`flex items-center px-4 py-3 text-base transition-colors rounded-2xl
                           ${isActive
-                            ? "bg-sidebar-selected-bg text-sidebar-active font-bold text-black"
+                            ? "bg-sidebar-selected-bg text-sidebar-active font-bold"
                             : "text-sidebar hover:text-sidebar-active hover:bg-sidebar-hover-bg"}
                         `}
                       >
