@@ -4,8 +4,9 @@ import { useUser } from "@/contexts/user-context";
 import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
+// Correction : Ajout explicite de l'importation par défaut avec typage correct
 const StripoEditor = dynamic(
-  () => import("@/components/StripoEditor"),
+  () => import("@/components/StripoEditor").then((mod) => ({ default: mod.default })),
   {
     ssr: false,
     loading: () => (
@@ -37,7 +38,8 @@ function EditorContent() {
   return (
     <>
       <style jsx global>{`
-        body, html {
+        body,
+        html {
           margin: 0;
           padding: 0;
           overflow: hidden;
@@ -48,19 +50,21 @@ function EditorContent() {
           box-sizing: border-box;
         }
       `}</style>
-      <div style={{
-        height: "100vh",
-        width: "100vw",
-        margin: 0,
-        padding: 0,
-        overflow: "hidden",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 10
-      }}>
+      <div
+        style={{
+          height: "100vh",
+          width: "100vw",
+          margin: 0,
+          padding: 0,
+          overflow: "hidden",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 10,
+        }}
+      >
         <StripoEditor />
       </div>
     </>
@@ -69,13 +73,14 @@ function EditorContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={
-      <div className="h-screen w-screen flex items-center justify-center">
-        Chargement de l'éditeur Stripo...
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="h-screen w-screen flex items-center justify-center">
+          Chargement de l'éditeur Stripo...
+        </div>
+      }
+    >
       <EditorContent />
     </Suspense>
   );
 }
-

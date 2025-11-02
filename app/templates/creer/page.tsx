@@ -28,18 +28,37 @@ const CreateTemplatePage: React.FC = () => {
     if (!validateTemplateName()) return;
     setIsSubmitting(true);
     try {
-      // Récupération du user et famille_id (logique page Contact)
+      // Récupération du user et famille_id
       let familleId = user?.compte_parent_id;
       if (!familleId) familleId = user?.id ?? "";
 
       const createdBy = user?.id ?? "";
       const now = new Date().toISOString();
+
+      // 1. Récupérer le HTML du template catalog
+      const { data: catalog, error: catalogError } = await supabase
+        .from("Template_catalog")
+        .select("html_code, design_json")
+        .eq("id", "4a7fd5e8-85c4-45ee-967d-72b299f9aa07")
+        .single();
+
+      if (catalogError || !catalog) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger le template de base.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Créer le template dans Supabase avec ce HTML
       const { data, error } = await supabase
         .from("Templates")
         .insert({
           nom: templateName,
-          html_code: "",
-          design_json: {},
+          html_code: catalog.html_code ?? "",
+          design_json: catalog.design_json ?? {},
           created_by: createdBy,
           famille_id: familleId,
           created_at: now,
@@ -49,7 +68,6 @@ const CreateTemplatePage: React.FC = () => {
         .single();
 
       if (error || !data?.id) {
-        console.error("Supabase error:", error);
         toast({
           title: "Erreur",
           description: "Impossible de créer le template.",
@@ -59,6 +77,7 @@ const CreateTemplatePage: React.FC = () => {
         return;
       }
 
+      // 3. Rediriger vers l'éditeur avec l'id du nouveau template (mode=edit)
       router.push(`/templates/editeur?id=${data.id}&name=${encodeURIComponent(templateName)}&mode=edit`);
     } catch (err) {
       toast({

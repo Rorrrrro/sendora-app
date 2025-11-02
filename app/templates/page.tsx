@@ -491,7 +491,12 @@ export default function TemplatesPage() {
                                     <Eye className="h-4 w-4" />
                                     Aperçu
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition">
+                                  <DropdownMenuItem
+                                    className="menu-action-item w-full flex items-center gap-2 h-8 font-semibold rounded-lg text-[16px] text-[#3d247a] transition"
+                                    onClick={() => {
+                                      router.push(`/templates/editeur?id=${template.id}&name=${encodeURIComponent(template.nom)}&mode=edit`)
+                                    }}
+                                  >
                                     <Pencil className="h-4 w-4" />
                                     Modifier
                                   </DropdownMenuItem>
@@ -617,4 +622,3 @@ export default function TemplatesPage() {
     </AppLayout>
   )
 }
-
