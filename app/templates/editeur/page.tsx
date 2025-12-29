@@ -73,14 +73,25 @@ function EditorContent() {
 
 export default function Page() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-screen w-screen flex items-center justify-center">
-          Chargement de l'éditeur Stripo...
-        </div>
-      }
-    >
-      <EditorContent />
-    </Suspense>
+    <>
+      {/* Définit le settingsId Stripo avant le chargement du composant */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            // Défini explicitement le profile Stripo (settingsId) via NEXT_PUBLIC variable
+            try { window.__STRIPO_SETTINGS_ID = "${process.env.NEXT_PUBLIC_STRIPO_SETTINGS_ID || ''}"; } catch(e) {}
+          `,
+        }}
+      />
+      <Suspense
+        fallback={
+          <div className="h-screen w-screen flex items-center justify-center">
+            Chargement de l'éditeur Stripo...
+          </div>
+        }
+      >
+        <EditorContent />
+      </Suspense>
+    </>
   );
 }
