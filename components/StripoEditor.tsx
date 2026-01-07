@@ -295,10 +295,8 @@ export default function StripoEditor() {
 
               // ✅ Masquer tout le panneau paramètres message (objet, préheader, UTM, Gmail)
               messageSettingsEnabled: false,
-              displayTitle: false,
-              displayHiddenPreheader: false,
-              displayUTM: false,
-              displayGmailAnnotations: false,
+
+            
 
               onTokenRefreshRequest: function (callback: (token: string) => void) {
                 fetch("/api/stripo-auth", {
