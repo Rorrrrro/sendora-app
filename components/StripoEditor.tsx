@@ -4,6 +4,14 @@ import { useRef, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { useUser } from "@/contexts/user-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Eye, Smartphone, Tablet, Monitor, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
@@ -22,6 +30,9 @@ export default function StripoEditor() {
   const [error, setError] = useState<string | null>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<
+    "mobile" | "tablet" | "desktop"
+  >("desktop");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
@@ -30,6 +41,7 @@ export default function StripoEditor() {
   const templateId = searchParams.get("id");
   const templateName = searchParams.get("name") || "Sans nom";
   const mode = searchParams.get("mode") || "new";
+  const type = searchParams.get("type"); // récupère le type pour retour (fromScratch, catalog, etc.)
   const [familleId, setFamilleId] = useState<string | null>(null);
 
   // ✅ clé client unique pour le storage (familleId prioritaire)
@@ -329,7 +341,12 @@ export default function StripoEditor() {
             opts.html = design && design.html ? design.html : html || "";
             opts.css = design && design.css ? design.css : css || "";
 
-            console.log("Init avec html len:", (opts.html || "").length, " css len:", (opts.css || "").length);
+            console.log(
+              "Init avec html len:",
+              (opts.html || "").length,
+              " css len:",
+              (opts.css || "").length
+            );
             try {
               console.log("[editorOptions]", {
                 tokenPreview: String(opts.token).slice(0, 8) + "...",
@@ -535,6 +552,23 @@ export default function StripoEditor() {
     }
   };
 
+  const handleBack = async () => {
+    if (templateId) {
+      await supabase.from("Templates").delete().eq("id", templateId);
+    }
+    // Redirige selon le type
+    if (type === "fromScratch") {
+      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
+    } else if (type === "catalog") {
+      router.push(
+        `/templates/catalog-selection?name=${encodeURIComponent(templateName)}`
+      );
+    } else {
+      // Par défaut, retourne à la page de création avec le nom pré-rempli
+      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -564,7 +598,7 @@ export default function StripoEditor() {
       >
         {/* Bouton Retour à gauche */}
         <button
-          onClick={() => router.push("/templates")}
+          onClick={handleBack}
           disabled={isSaving}
           style={{
             padding: "8px 16px",
@@ -627,8 +661,12 @@ export default function StripoEditor() {
               boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
               transition: "background 0.2s",
               opacity: !isSaving ? 1 : 0.7,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
+            <Eye style={{ width: 18, height: 18 }} />
             Aperçu
           </button>
 
@@ -743,118 +781,156 @@ export default function StripoEditor() {
         }}
       />
 
-      {isPreviewOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.25)",
-            zIndex: 2000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onClick={() => setIsPreviewOpen(false)}
-        >
-          <div
-            style={{
-              background: "white",
-              borderRadius: 8,
-              boxShadow: "0 2px 16px rgba(0,0,0,0.18)",
-              width: "90vw",
-              maxWidth: 900,
-              maxHeight: "90vh",
-              overflow: "auto",
-              position: "relative",
-              padding: 0,
-              display: "flex",
-              flexDirection: "column",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 12,
-                padding: "16px 0",
-                borderBottom: "1px solid #eee",
-              }}
-            >
-              {[
-                { label: "Mobile", width: 375 },
-                { label: "Tablet", width: 600 },
-                { label: "Desktop", width: 900 },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => {
-                    const iframe = document.getElementById(
-                      "preview-iframe"
-                    ) as HTMLIFrameElement;
-                    if (iframe) iframe.style.width = opt.width + "px";
-                  }}
-                  style={{
-                    padding: "6px 18px",
-                    borderRadius: 6,
-                    border: "none",
-                    backgroundColor: "#f3f3f3",
-                    color: "#222",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                  }}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-5xl w-full h-[90vh] p-0 flex flex-col [&>button]:hidden">
+          <DialogHeader className="p-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-bold">
+                Aperçu du template
+              </DialogTitle>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 device-btn ${
+                    previewDevice === "mobile"
+                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      : ""
+                  }`}
+                  onClick={() => setPreviewDevice("mobile")}
+                  aria-label="Mobile"
                 >
-                  {opt.label}
-                </button>
-              ))}
-              <button
-                onClick={() => setIsPreviewOpen(false)}
-                style={{
-                  marginLeft: 24,
-                  padding: "6px 18px",
-                  borderRadius: 6,
-                  border: "none",
-                  backgroundColor: "#e57373",
-                  color: "white",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                Fermer
-              </button>
+                  <Smartphone className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 device-btn ${
+                    previewDevice === "tablet"
+                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      : ""
+                  }`}
+                  onClick={() => setPreviewDevice("tablet")}
+                  aria-label="Tablet"
+                >
+                  <Tablet className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 device-btn ${
+                    previewDevice === "desktop"
+                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      : ""
+                  }`}
+                  onClick={() => setPreviewDevice("desktop")}
+                  aria-label="Desktop"
+                >
+                  <Monitor className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 close-btn"
+                  onClick={() => setIsPreviewOpen(false)}
+                  aria-label="Fermer"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-4 bg-gray-50 flex items-center justify-center">
             <div
+              className={`bg-white border rounded-lg overflow-hidden mx-auto transition-all duration-300 ${
+                previewDevice === "mobile"
+                  ? "w-[375px] max-h-[90%] overflow-y-auto"
+                  : previewDevice === "tablet"
+                  ? "w-[768px] h-[900px] max-h-full"
+                  : "w-[1200px] h-full max-h-[90%]"
+              }`}
               style={{
-                flex: 1,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 24,
+                width:
+                  previewDevice === "mobile"
+                    ? 375
+                    : previewDevice === "tablet"
+                    ? 768
+                    : 1200,
+                height:
+                  previewDevice === "mobile"
+                    ? "auto"
+                    : previewDevice === "tablet"
+                    ? 900
+                    : "90%",
+                minHeight: previewDevice === "mobile" ? "667px" : "auto",
+                border: "none",
+                background: "#fff",
+                boxShadow: "0 1px 4px #e0e0e0",
+                display: "block",
               }}
             >
-              <iframe
-                id="preview-iframe"
-                title="Aperçu du template"
-                style={{
-                  width: 900,
-                  height: "80vh",
-                  border: "1px solid #eee",
-                  borderRadius: 6,
-                  background: "#fafafa",
-                  transition: "width 0.2s",
-                }}
-                srcDoc={
-                  previewHtml ||
-                  "<div style='padding:20px;text-align:center'>Chargement de l'aperçu...</div>"
-                }
-              />
+              {previewHtml ? (
+                <iframe
+                  srcDoc={previewHtml}
+                  style={{
+                    width: "100%",
+                    height: previewDevice === "mobile" ? "auto" : "100%",
+                    minHeight: previewDevice === "mobile" ? "667px" : "auto",
+                    border: "none",
+                    background: "#fff",
+                  }}
+                  title="Aperçu du template"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  Pas de contenu HTML à afficher
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ajoute ce style global à la fin du composant */}
+      <style jsx>{`
+        .device-btn {
+          background: #f3f3f3;
+          color: #23272f;
+          border-color: #e0e0e0;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .device-btn:hover {
+          background: #fafbfc !important;
+          border-color: #bdbdbd !important;
+          color: #6c43e0 !important;
+        }
+        .device-btn:active {
+          background: #e6dbfa !important;
+          color: #4f32a7 !important;
+          border-color: #4f32a7 !important;
+        }
+        .device-btn.bg-[#6c43e0] {
+          background: #6c43e0 !important;
+          color: #fff !important;
+          border-color: #6c43e0 !important;
+        }
+        .device-btn.bg-[#6c43e0]:hover {
+          background: #4f32a7 !important;
+          color: #fff !important;
+          border-color: #4f32a7 !important;
+        }
+        .close-btn {
+          background: #f3f3f3;
+          color: #23272f;
+          border-color: #e0e0e0;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .close-btn:hover {
+          background: #fafbfc !important;
+          border-color: #bdbdbd !important;
+          color: #d21c3c !important;
+        }
+      `}</style>
     </div>
   );
 }

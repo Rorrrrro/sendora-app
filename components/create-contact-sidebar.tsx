@@ -276,6 +276,8 @@ export function CreateContactSidebar(props: CreateContactSidebarProps) {
 
       // Appel Edge Function pour synchroniser le contact avec Sendy
       try {
+        // Attendre 1 seconde avant d'appeler Sendy (workaround latence Supabase)
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         await callSendyEdgeFunction("sync-sendy-contacts", {
           contact_id: contactData[0].id,
           sendy_list_hash: sendyListHash

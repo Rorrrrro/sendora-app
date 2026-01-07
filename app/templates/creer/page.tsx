@@ -14,12 +14,17 @@ const CreateTemplatePage: React.FC = () => {
   const router = useRouter();
   const [templateName, setTemplateName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inputError, setInputError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = createBrowserClient();
   const { user } = useUser();
 
   useEffect(() => {
-    if (inputRef.current) {
+    const params = new URLSearchParams(window.location.search);
+    const nameFromUrl = params.get("name");
+    if (nameFromUrl) {
+      setTemplateName(nameFromUrl);
+    } else if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
@@ -91,7 +96,8 @@ const CreateTemplatePage: React.FC = () => {
 
   const handleCreateFromTemplate = () => {
     if (!validateTemplateName()) return;
-    router.push(`/templates/utilisations?name=${encodeURIComponent(templateName)}`);
+    // Redirige vers la nouvelle page de sélection de template catalog
+    router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}`);
   };
 
   const handleCreateFromHtml = () => {
@@ -106,13 +112,16 @@ const CreateTemplatePage: React.FC = () => {
 
   const validateTemplateName = (): boolean => {
     if (!templateName.trim()) {
+      setInputError(true);
       toast({
         title: "Erreur",
         description: "Veuillez nommer votre template",
         variant: "destructive",
       });
+      if (inputRef.current) inputRef.current.focus();
       return false;
     }
+    setInputError(false);
     return true;
   };
 
@@ -124,9 +133,17 @@ const CreateTemplatePage: React.FC = () => {
             ref={inputRef}
             id="template-name"
             value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
+            onChange={(e) => {
+              setTemplateName(e.target.value);
+              if (inputError && e.target.value.trim()) setInputError(false);
+            }}
             placeholder="Nom du template"
-            className="max-w-md text-lg"
+            className={`max-w-md text-lg ${
+              inputError
+                ? "border-red-500 focus-visible:ring-red-500 focus:border-red-500"
+                : ""
+            }`}
+            style={inputError ? { borderColor: "#dc2626", color: "#dc2626" } : {}}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
