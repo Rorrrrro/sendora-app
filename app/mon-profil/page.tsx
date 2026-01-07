@@ -118,10 +118,12 @@ export default function MonProfilPage() {
       // === Appel Edge Function pour synchro Sendy (utilitaire factorisé) ===
       try {
         await callSendyEdgeFunction("sync-sendy-brand-update", {
-          id: user.id,
-          prenom: formData.prenom.trim(),
-          nom: formData.nom.trim(),
-          entreprise: formData.entreprise.trim()
+          record: {
+            id: user.id,
+            prenom: formData.prenom.trim(),
+            nom: formData.nom.trim(),
+            entreprise: formData.entreprise.trim()
+          }
         });
       } catch (err) {
         console.error("Erreur dans callSendyEdgeFunction :", err);

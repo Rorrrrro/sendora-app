@@ -336,9 +336,11 @@ export default function ListesPage() {
             if (listeToEdit.sendy_list_id) {
               try {
                 await callSendyEdgeFunction("sync-sendy-lists-update", {
-                  id: listeToEdit.id,
-                  nom: data.nom,
-                  sendy_list_id: listeToEdit.sendy_list_id
+                  record: {
+                    id: listeToEdit.id,
+                    nom: data.nom,
+                    sendy_list_id: listeToEdit.sendy_list_id
+                  }
                 });
               } catch (err) {
                 console.error("Erreur synchro Sendy:", err);
@@ -386,8 +388,10 @@ export default function ListesPage() {
                   if (listeToDelete.sendy_list_id) {
                     try {
                       await callSendyEdgeFunction("sync-sendy-lists-delete", {
-                        id: listeToDelete.id,
-                        sendy_list_id: listeToDelete.sendy_list_id
+                        record: {
+                          id: listeToDelete.id,
+                          sendy_list_id: listeToDelete.sendy_list_id
+                        }
                       });
                     } catch (err) {
                       console.error("Erreur suppression Sendy:", err);
@@ -408,4 +412,4 @@ export default function ListesPage() {
       </div>
     </AppLayout>
   )
-} 
+}

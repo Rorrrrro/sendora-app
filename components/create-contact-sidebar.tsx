@@ -23,17 +23,11 @@ interface Liste {
 
 interface CreateContactSidebarProps {
   isOpen: boolean
-  // noms conformes à la recommandation Next.js (Server Action style)
-  onCloseAction?: () => void
-  onContactCreatedAction?: () => void
+  onClose: () => void
+  onContactCreated?: () => void
 }
 
-export function CreateContactSidebar(props: CreateContactSidebarProps) {
-  const { isOpen, onCloseAction, onContactCreatedAction } = props;
-  // runtime shim: accepte aussi les anciens noms passés par les callsites
-  const onClose = (props as any).onClose ?? onCloseAction;
-  const onContactCreated = (props as any).onContactCreated ?? onContactCreatedAction;
-
+export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: CreateContactSidebarProps) {
   const { user } = useUser()
   const [listes, setListes] = useState<Liste[]>([])
   const [isCreatingListe, setIsCreatingListe] = useState(false)
@@ -276,11 +270,11 @@ export function CreateContactSidebar(props: CreateContactSidebarProps) {
 
       // Appel Edge Function pour synchroniser le contact avec Sendy
       try {
-        // Attendre 1 seconde avant d'appeler Sendy (workaround latence Supabase)
-        await new Promise((resolve) => setTimeout(resolve, 1000));
         await callSendyEdgeFunction("sync-sendy-contacts", {
-          contact_id: contactData[0].id,
-          sendy_list_hash: sendyListHash
+          record: {
+            contact_id: contactData[0].id,
+            sendy_list_hash: sendyListHash
+          }
         });
       } catch (err) {
         console.error("Erreur lors de la synchro Sendy:", err);
@@ -299,8 +293,12 @@ export function CreateContactSidebar(props: CreateContactSidebarProps) {
       setEmailError("")
 
       // Fermer le panneau et notifier le parent
-      onClose?.()
-      onContactCreated?.()
+      if (typeof onClose === "function") {
+        onClose()
+      }
+      if (onContactCreated) {
+        onContactCreated()
+      }
     } catch (error) {
       console.error("Erreur:", error)
     } finally {
@@ -328,10 +326,10 @@ export function CreateContactSidebar(props: CreateContactSidebarProps) {
   return (
     <div className="fixed inset-0 z-50 top-0 left-0 right-0 bottom-0">
       {/* Overlay moins foncé */}
-      <div className="fixed inset-0 bg-black/50" onClick={() => onClose?.()} />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
-      {/* Sidebar : supprimer la classe dupliquée "h-full", garder "h-screen" */}
-      <div className="fixed right-0 top-0 h-screen w-96 bg-[#FFFEFF] shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col">
+      {/* Sidebar avec bordures très arrondies à gauche */}
+      <div className="fixed right-0 top-0 h-screen w-96 bg-[#FFFEFF] shadow-xl overflow-hidden rounded-l-[2rem] flex flex-col h-full">
         {/* Header - Avec fond complet pour éviter la transparence */}
         <div className="bg-[#6c43e0] py-6 text-center relative z-10">
           <h2 className="text-xl font-bold text-white">Créer un contact</h2>
@@ -473,7 +471,7 @@ export function CreateContactSidebar(props: CreateContactSidebarProps) {
         <div className="flex justify-center gap-14 px-8 py-6 border-t bg-[#FFFEFF]">
           <Button
             type="button"
-            onClick={() => onClose?.()}
+            onClick={onClose}
             className="bg-[#FFFEFF] border border-[#e0e0e0] text-[#23272f] font-semibold rounded-md h-10 px-4 py-2 shadow-none hover:bg-[#fafbfc] hover:border-[#bdbdbd] hover:text-[#23272f] transition"
           >
             Retour

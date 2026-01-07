@@ -514,10 +514,12 @@ export default function ImportContactsPage() {
             try {
               console.log("Appel sync-sendy-custom-field", { list_hash: list.sendy_list_id, field_name: fieldName, field_type: "Text", supabase_list_id: list.id });
               await callSendyEdgeFunction("sync-sendy-custom-field", {
-                list_hash: list.sendy_list_id,
-                field_name: fieldName,
-                field_type: "Text",
-                supabase_list_id: list.id // <-- correction ici
+                record: {
+                  list_hash: list.sendy_list_id,
+                  field_name: fieldName,
+                  field_type: "Text",
+                  supabase_list_id: list.id
+                }
               });
             } catch (err) {
               console.error("Erreur lors de la synchro du custom field Sendy:", fieldName, "liste:", list.sendy_list_id, err);
@@ -532,8 +534,10 @@ export default function ImportContactsPage() {
           if (list && list.sendy_list_id) {
             try {
               await callSendyEdgeFunction("sync-sendy-contacts", {
-                contact_id: contact.id,
-                sendy_list_hash: list.sendy_list_id
+                record: {
+                  contact_id: contact.id,
+                  sendy_list_hash: list.sendy_list_id
+                }
               });
             } catch (err) {
               console.error("Erreur lors de la synchro Sendy pour contact:", contact.id, "liste:", list.sendy_list_id, err);

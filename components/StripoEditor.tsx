@@ -293,6 +293,13 @@ export default function StripoEditor() {
               forceRecreate: true,
               ...(settingsId ? { settingsId } : {}),
 
+              // ✅ Masquer tout le panneau paramètres message (objet, préheader, UTM, Gmail)
+              messageSettingsEnabled: false,
+              displayTitle: false,
+              displayHiddenPreheader: false,
+              displayUTM: false,
+              displayGmailAnnotations: false,
+
               onTokenRefreshRequest: function (callback: (token: string) => void) {
                 fetch("/api/stripo-auth", {
                   method: "POST",
@@ -792,9 +799,9 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 device-btn ${
+                  className={`h-8 w-8 ${
                     previewDevice === "mobile"
-                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
                       : ""
                   }`}
                   onClick={() => setPreviewDevice("mobile")}
@@ -805,9 +812,9 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 device-btn ${
+                  className={`h-8 w-8 ${
                     previewDevice === "tablet"
-                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
                       : ""
                   }`}
                   onClick={() => setPreviewDevice("tablet")}
@@ -818,9 +825,9 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 device-btn ${
+                  className={`h-8 w-8 ${
                     previewDevice === "desktop"
-                      ? "bg-[#6c43e0] text-white border-[#6c43e0]"
+                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
                       : ""
                   }`}
                   onClick={() => setPreviewDevice("desktop")}
@@ -831,7 +838,7 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 close-btn"
+                  className="h-8 w-8"
                   onClick={() => setIsPreviewOpen(false)}
                   aria-label="Fermer"
                 >
@@ -890,47 +897,6 @@ export default function StripoEditor() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Ajoute ce style global à la fin du composant */}
-      <style jsx>{`
-        .device-btn {
-          background: #f3f3f3;
-          color: #23272f;
-          border-color: #e0e0e0;
-          transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-        .device-btn:hover {
-          background: #fafbfc !important;
-          border-color: #bdbdbd !important;
-          color: #6c43e0 !important;
-        }
-        .device-btn:active {
-          background: #e6dbfa !important;
-          color: #4f32a7 !important;
-          border-color: #4f32a7 !important;
-        }
-        .device-btn.bg-[#6c43e0] {
-          background: #6c43e0 !important;
-          color: #fff !important;
-          border-color: #6c43e0 !important;
-        }
-        .device-btn.bg-[#6c43e0]:hover {
-          background: #4f32a7 !important;
-          color: #fff !important;
-          border-color: #4f32a7 !important;
-        }
-        .close-btn {
-          background: #f3f3f3;
-          color: #23272f;
-          border-color: #e0e0e0;
-          transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-        .close-btn:hover {
-          background: #fafbfc !important;
-          border-color: #bdbdbd !important;
-          color: #d21c3c !important;
-        }
-      `}</style>
     </div>
   );
 }

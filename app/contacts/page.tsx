@@ -871,11 +871,9 @@ function ContactsContent() {
         </Card>
 
         <CreateContactSidebar
-          {...({
-            isOpen: createSidebarOpen,
-            onOpenChange: (open: boolean) => setCreateSidebarOpen(open),
-            onContactCreated: fetchContacts,
-          } as any)}
+          isOpen={createSidebarOpen}
+          onClose={() => setCreateSidebarOpen(false)}
+          onContactCreated={fetchContacts}
         />
       </div>
       <style jsx global>{`
