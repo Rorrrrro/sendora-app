@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/dashboard-layout";
 import { createBrowserClient } from "@/lib/supabase";
@@ -540,4 +540,10 @@ const CatalogSelectionPage: React.FC = () => {
   );
 };
 
-export default CatalogSelectionPage;
+export default function CatalogSelectionPageWrapper() {
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <CatalogSelectionPage />
+    </Suspense>
+  );
+}
