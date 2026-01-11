@@ -383,6 +383,7 @@ function ContactsContent() {
     setLoading(true);
     const supabase = createBrowserClient();
     try {
+      // 1. Supprime la liaison dans Listes_Contacts
       await Promise.all(
         selectedListsToRemove.map(listeId =>
           supabase
@@ -392,6 +393,35 @@ function ContactsContent() {
             .in("contact_id", Array.from(selectedContacts))
         )
       );
+      // 2. Récupérer les sendy_list_id pour les listes concernées
+      const { data: listesData } = await supabase
+        .from("Listes")
+        .select("id, sendy_list_id")
+        .in("id", selectedListsToRemove);
+
+      // 3. Pour chaque contact, récupérer l'email et appeler la Edge Function pour chaque (contact, liste)
+      for (const contactId of Array.from(selectedContacts)) {
+        // Récupérer l'email du contact
+        const { data: contact } = await supabase
+          .from("Contacts")
+          .select("email")
+          .eq("id", contactId)
+          .single();
+        if (!contact?.email) continue;
+        for (const list of listesData || []) {
+          if (!list.sendy_list_id) continue;
+          try {
+            await callSendyEdgeFunction("sync-sendy-contacts-delete", {
+              record: {
+                email: contact.email,
+                sendy_list_ids: [list.sendy_list_id]
+              }
+            });
+          } catch (err) {
+            console.error("Erreur suppression Sendy pour", contact.email, err);
+          }
+        }
+      }
       fetchContacts();
       setSelectedContacts(new Set());
     } catch (error) {
@@ -414,6 +444,7 @@ function ContactsContent() {
     }
     const supabase = createBrowserClient();
     try {
+      // 1. Ajout dans Listes_Contacts
       await Promise.all(
         selectedListsToAdd.flatMap(listeId =>
           Array.from(selectedContacts).map(contactId =>
@@ -423,6 +454,28 @@ function ContactsContent() {
           )
         )
       );
+      // 2. Récupérer les sendy_list_id pour les listes concernées
+      const { data: listesData } = await supabase
+        .from("Listes")
+        .select("id, sendy_list_id")
+        .in("id", selectedListsToAdd);
+
+      // 3. Appeler la Edge Function pour chaque (contact, liste) via callSendyEdgeFunction
+      for (const contactId of Array.from(selectedContacts)) {
+        for (const list of listesData || []) {
+          if (!list.sendy_list_id) continue;
+          try {
+            await callSendyEdgeFunction("sync-sendy-contacts", {
+              record: {
+                contact_id: contactId,
+                sendy_list_hash: list.sendy_list_id
+              }
+            });
+          } catch (err) {
+            console.error("Erreur lors de la synchro Sendy:", err);
+          }
+        }
+      }
       setShowAddToListDialog(false)
       setSelectedListsToAdd([])
       setSelectedContacts(new Set())

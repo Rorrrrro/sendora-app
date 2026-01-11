@@ -292,11 +292,7 @@ export default function StripoEditor() {
               },
               forceRecreate: true,
               ...(settingsId ? { settingsId } : {}),
-
-              // ✅ Masquer tout le panneau paramètres message (objet, préheader, UTM, Gmail)
-              messageSettingsEnabled: false,
-
-            
+              messageSettingsEnabled: false, // <--- Ajout ici pour masquer le panneau Message Settings
 
               onTokenRefreshRequest: function (callback: (token: string) => void) {
                 fetch("/api/stripo-auth", {

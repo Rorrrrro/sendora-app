@@ -142,13 +142,14 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         console.error("Erreur lors de la création de la liste:", error)
         alert(`Erreur: ${error.message}`)
       } else if (data && data.length > 0) {
-        setListes((prev) => [...prev, data[0]])
-        setFormData((prev) => ({ ...prev, liste_id: data[0].id }))
-        setSelectedListeId(data[0].id)
+        const createdListe = data[0];
+        setListes((prev) => [...prev, createdListe])
+        setFormData((prev) => ({ ...prev, liste_id: createdListe.id }))
+        setSelectedListeId(createdListe.id)
         setIsCreatingListe(false)
         setNewListeName("")
 
-        // === Récupère le sendy_brand_id de l'utilisateur (comme dans create-list-sidebar) ===
+        // === Récupère le sendy_brand_id de l'utilisateur ===
         let sendy_brand_id = null;
         if (user.id) {
           const { data: userData, error: userError } = await createBrowserClient()
@@ -164,8 +165,8 @@ export function CreateContactSidebar({ isOpen, onClose, onContactCreated }: Crea
         if (sendy_brand_id) {
           try {
             await callSendyEdgeFunction("sync-sendy-lists", {
-              id: data[0].id,
-              nom: data[0].nom,
+              id: createdListe.id,
+              nom: createdListe.nom,
               sendy_brand_id
             });
           } catch (err) {
