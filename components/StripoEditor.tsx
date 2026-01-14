@@ -10,21 +10,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Smartphone, Tablet, Monitor, X } from "lucide-react";
+import { Eye, Smartphone, Tablet, Monitor, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
     UIEditor?: any;
     StripoEditorApi?: any;
-    __stripoFetchGuard?: boolean;
     __stripoObserver?: MutationObserver | null;
-    __STRIPO_SETTINGS_ID?: string;
+    __SENDY_MERGE_TAGS_CACHE?: any;
   }
 }
 
+type MergeTagEntry = {
+  label: string;
+  value: string;
+  previewValue?: string;
+};
+
+type MergeTagCategory = {
+  category: string;
+  entries: MergeTagEntry[];
+};
+
 export default function StripoEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +44,13 @@ export default function StripoEditor() {
   const [previewDevice, setPreviewDevice] = useState<
     "mobile" | "tablet" | "desktop"
   >("desktop");
+
+  // --- External merge tags dialog state ---
+  const [isMergeTagsOpen, setIsMergeTagsOpen] = useState(false);
+  const [mergeTagsCatalog, setMergeTagsCatalog] = useState<MergeTagCategory[]>([]);
+  const [mergeTagsQuery, setMergeTagsQuery] = useState("");
+  const mergeTagsCallbackRef = useRef<((tag: string) => void) | null>(null);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
@@ -41,13 +59,11 @@ export default function StripoEditor() {
   const templateId = searchParams.get("id");
   const templateName = searchParams.get("name") || "Sans nom";
   const mode = searchParams.get("mode") || "new";
-  const type = searchParams.get("type"); // récupère le type pour retour (fromScratch, catalog, etc.)
+  const type = searchParams.get("type");
   const [familleId, setFamilleId] = useState<string | null>(null);
 
-  // ✅ clé client unique pour le storage (familleId prioritaire)
+  // clé client unique
   const key = familleId ?? user?.id ?? "1";
-
-  // emailId = id du template Supabase
   const emailId = templateId;
 
   useEffect(() => {
@@ -64,7 +80,7 @@ export default function StripoEditor() {
           .eq("id", user.id)
           .single();
         setFamilleId(data?.compte_parent_id ?? user.id);
-      } catch (error) {
+      } catch {
         if (user) setFamilleId(user.id);
       }
     }
@@ -72,34 +88,19 @@ export default function StripoEditor() {
   }, [user, supabase, router]);
 
   useEffect(() => {
-    // Ne rien faire tant que familleId n'est pas défini (évite le fallback prématuré)
     if (familleId === null) return;
 
     // Nettoyage préalable
-    if (containerRef.current) {
-      containerRef.current.innerHTML = "";
-    }
+    if (containerRef.current) containerRef.current.innerHTML = "";
     const existingScript = document.getElementById("UiEditorScript");
-    if (existingScript && existingScript.parentNode) {
-      existingScript.parentNode.removeChild(existingScript);
-    }
+    if (existingScript?.parentNode) existingScript.parentNode.removeChild(existingScript);
 
     async function loadTemplate() {
       let html = "";
       let css = "";
       let designJson: any = null;
 
-      console.log("loadTemplate start", { mode, templateId, familleId });
-
       if (templateId) {
-        console.log(
-          "Tentative de chargement depuis Templates pour id",
-          templateId,
-          " (familleId:",
-          familleId,
-          ")"
-        );
-
         let templateFetch = await supabase
           .from("Templates")
           .select("html_code, design_json, famille_id")
@@ -107,48 +108,24 @@ export default function StripoEditor() {
           .maybeSingle();
 
         let template = templateFetch.data;
+
         if (!template) {
-          console.warn(
-            "Aucun template trouvé avec le filtre famille_id, tentative sans filtre."
-          );
           const second = await supabase
             .from("Templates")
             .select("html_code, design_json, famille_id")
             .eq("id", templateId)
             .maybeSingle();
           template = second.data;
-          if (template)
-            console.warn(
-              "Template trouvé sans correspondance famille_id (famille_id stockée:",
-              template.famille_id,
-              ")"
-            );
         }
 
-        console.log(
-          "Résultat recherche Templates:",
-          template,
-          "error:",
-          templateFetch.error
-        );
-
-        if (!template) {
-          console.warn(
-            "Aucun template trouvé dans Templates pour l'id donné. Fallback sur Template_catalog."
-          );
-        } else {
+        if (template) {
           html = template.html_code || "";
           designJson = template.design_json ?? null;
 
           if (typeof designJson === "string") {
             try {
               designJson = JSON.parse(designJson);
-              console.log("design_json parsé depuis string (Templates)");
-            } catch (e) {
-              console.warn(
-                "design_json stocké en string non-parsable, on l'ignore pour le design natif",
-                e
-              );
+            } catch {
               designJson = null;
             }
           }
@@ -179,23 +156,17 @@ export default function StripoEditor() {
         html = catalog.html_code || "";
         designJson = catalog.design_json;
 
-        if (
-          designJson &&
-          typeof designJson === "object" &&
-          Object.keys(designJson).length > 0
-        ) {
+        if (designJson && typeof designJson === "object" && Object.keys(designJson).length > 0) {
           css = designJson.css || "";
         } else {
           designJson = null;
         }
-      } else {
-        setError(
-          "Aucun template trouvé pour cet identifiant. Vérifiez l'URL ou les droits d'accès."
-        );
+
+        initPlugin({ html, css, design: designJson });
         return;
       }
 
-      initPlugin({ html, css, design: designJson });
+      setError("Aucun template trouvé pour cet identifiant.");
     }
 
     function initPlugin({
@@ -210,7 +181,7 @@ export default function StripoEditor() {
       if (!containerRef.current) return;
 
       if (!emailId) {
-        setError("Erreur : emailId (id du template) manquant dans l'URL.");
+        setError("Erreur : emailId manquant dans l'URL.");
         return;
       }
 
@@ -225,56 +196,58 @@ export default function StripoEditor() {
         .then((res) => res.json())
         .then(async (data) => {
           if (!data?.token) {
-            setError("Erreur : pas de token dans la réponse du serveur.");
+            setError("Erreur : pas de token Stripo.");
             return;
           }
 
-          const workerBase = "https://stripo.romain-ver69.workers.dev";
-          console.log(
-            "[stripo-token] token received length=",
-            data.token?.length ?? 0
-          );
+          // --- Fetch merge tags from your Supabase Edge Function ---
+          const fetchMergeTags = async (): Promise<MergeTagCategory[]> => {
+            const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
 
-          // ping simple pour confirmer worker OK (GET)
-          const pingWorker = async () => {
-            const uiData = JSON.stringify({ userId: key, emailId });
-            try {
-              console.log("[pingWorker] calling", `${workerBase}/health`);
-              const h = await fetch(`${workerBase}/health`, {
-                method: "GET",
-                headers: { "es-plugin-ui-data": uiData },
-              });
-              console.log(
-                "[pingWorker] /health status",
-                h.status,
-                "body:",
-                await h.text().catch(() => null)
-              );
-
-              console.log("[pingWorker] calling list /?keys=");
-              const l = await fetch(`${workerBase}/?keys=`, {
-                method: "GET",
-                headers: { "es-plugin-ui-data": uiData },
-              });
-              const listJson = await l.json().catch(() => null);
-              console.log(
-                "[pingWorker] /?keys= status",
-                l.status,
-                "body sample:",
-                JSON.stringify(listJson).slice(0, 1000)
-              );
-            } catch (e) {
-              console.warn("[pingWorker] failed", e);
+            if (sessionErr || !accessToken) {
+              throw new Error("Session Supabase invalide (access_token manquant).");
             }
+
+            const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            if (!baseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL manquant.");
+
+            const res = await fetch(`${baseUrl}/functions/v1/stripo-merge-tags`, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+
+            if (!res.ok) {
+              const txt = await res.text().catch(() => "");
+              throw new Error(`stripo-merge-tags failed: ${res.status} ${txt}`);
+            }
+
+            return res.json();
           };
 
-          pingWorker().catch(() => {});
+          const getCachedMergeTags = async () => {
+            if (window.__SENDY_MERGE_TAGS_CACHE) return window.__SENDY_MERGE_TAGS_CACHE;
+            const tags = await fetchMergeTags();
+            console.log("merge tags reçus:", tags); // <-- Ajoute ce log
+            window.__SENDY_MERGE_TAGS_CACHE = tags;
+            return tags;
+          };
 
-          const prepareEditorOptions = () => {
-            // settingsId doit être EXACTEMENT celui du profil Stripo configuré pour "Other storage"
-            const settingsId = "7d640cece238429fa6697bedfb03f9ec"; // <-- remplace ici en dur pour tester
-
+          const prepareEditorOptions = async () => {
+            const settingsId = "7d640cece238429fa6697bedfb03f9ec";
             const uiData = { userId: key, emailId };
+
+            // Prefetch tags once (so externalMergeTags opens instantly)
+            let tags: MergeTagCategory[] = [];
+            try {
+              tags = await getCachedMergeTags();
+              setMergeTagsCatalog(tags);
+            } catch (e) {
+              console.warn("[mergeTags] prefetch failed:", e);
+            }
 
             const opts: any = {
               token: data.token,
@@ -292,8 +265,20 @@ export default function StripoEditor() {
               },
               forceRecreate: true,
               ...(settingsId ? { settingsId } : {}),
-              messageSettingsEnabled: false, // <--- Ajout ici pour masquer le panneau Message Settings
-
+              messageSettingsEnabled: false,
+              customCSS: `
+                [data-test="DOCUMENTS"], [data-test="TEMPLATES"] { display: none !important; }
+                .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], 
+                .es-plugin-ui-tabs__tab:nth-child(2) { display: none !important; }
+              `,
+              appearance: {
+                theme: "light",
+                panels: {
+                  tools: { dock: "left", width: "280px" },
+                  content: { expanded: true, width: "70%" },
+                  settings: { dock: "right", collapsed: false },
+                },
+              },
               onTokenRefreshRequest: function (callback: (token: string) => void) {
                 fetch("/api/stripo-auth", {
                   method: "POST",
@@ -308,54 +293,23 @@ export default function StripoEditor() {
                     if (d.token) callback(d.token);
                     else setError("Erreur : pas de token dans la réponse du serveur.");
                   })
-                  .catch((err) =>
-                    setError("Erreur d'authentification Stripo : " + err.message)
-                  );
+                  .catch((err) => setError("Erreur d'authentification Stripo : " + err.message));
               },
 
-              customCSS: `
-                [data-test="DOCUMENTS"], [data-test="TEMPLATES"] { display: none !important; }
-                .es-plugin-ui-tabs__tab[data-test="DOCUMENTS"], .es-plugin-ui-tabs__tab[data-test="TEMPLATES"], 
-                .es-plugin-ui-tabs__tab:nth-child(2) { display: none !important; }
-              `,
-
-              appearance: {
-                theme: "light",
-                panels: {
-                  tools: { dock: "left", width: "280px" },
-                  content: { expanded: true, width: "70%" },
-                  settings: { dock: "right", collapsed: false },
-                },
-              },
+              // ✅ Ajoute tes tags ici pour le bouton natif
+              mergeTags: tags,
 
               onReady: function () {
                 setIsEditorReady(true);
                 setError(null);
               },
               onError: function (err: any) {
-                setError(
-                  "Erreur Stripo : " + (err?.message || JSON.stringify(err))
-                );
+                setError("Erreur Stripo : " + (err?.message || JSON.stringify(err)));
               },
             };
 
             opts.html = design && design.html ? design.html : html || "";
             opts.css = design && design.css ? design.css : css || "";
-
-            console.log(
-              "Init avec html len:",
-              (opts.html || "").length,
-              " css len:",
-              (opts.css || "").length
-            );
-            try {
-              console.log("[editorOptions]", {
-                tokenPreview: String(opts.token).slice(0, 8) + "...",
-                metadata: opts.metadata,
-                apiRequestData: opts.apiRequestData,
-                settingsId: (opts as any).settingsId || null,
-              });
-            } catch (e) {}
 
             return opts;
           };
@@ -363,12 +317,11 @@ export default function StripoEditor() {
           const createHost = () => {
             if (!containerRef.current) return null;
 
-            const prevHosts =
-              containerRef.current.querySelectorAll("[data-stripo-host]");
+            const prevHosts = containerRef.current.querySelectorAll("[data-stripo-host]");
             prevHosts.forEach((h) => {
               try {
                 h.remove();
-              } catch (e) {}
+              } catch {}
             });
 
             const host = document.createElement("div");
@@ -382,56 +335,44 @@ export default function StripoEditor() {
 
           const initOnExistingUIEditor = async () => {
             try {
-              if (
-                (window as any).UIEditor &&
-                typeof (window as any).UIEditor.destroy === "function"
-              ) {
-                console.log(
-                  "Destruction de l'instance UIEditor existante avant ré-init (existing)."
-                );
+              if (window.UIEditor && typeof window.UIEditor.destroy === "function") {
                 try {
-                  (window as any).UIEditor.destroy();
-                } catch (e) {
-                  console.warn("destroy() a échoué:", e);
-                }
+                  window.UIEditor.destroy();
+                } catch {}
               }
-            } catch (e) {
-              console.warn("Erreur lors de la tentative de destruction UIEditor:", e);
-            }
+            } catch {}
 
             setTimeout(() => {
-              const host = createHost();
-              try {
-                const opts = prepareEditorOptions();
-                (window as any).UIEditor.initEditor(host, opts);
-              } catch (e) {
-                console.error("Échec initEditor sur instance existante:", e);
-                setError("Erreur d'initialisation Stripo (voir console).");
-              }
+              (async () => {
+                const host = createHost();
+                try {
+                  const opts = await prepareEditorOptions();
+                  window.UIEditor.initEditor(host, opts);
+                } catch (e) {
+                  console.error("Échec initEditor:", e);
+                  setError("Erreur d'initialisation Stripo (voir console).");
+                }
+              })();
             }, 250);
           };
 
-          if ((window as any).UIEditor) {
-            console.log("UIEditor présent — ré-initialisation sans recharger le script.");
+          if (window.UIEditor) {
             initOnExistingUIEditor();
           } else {
             const script = document.createElement("script");
             script.id = "UiEditorScript";
-            script.src =
-              "https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js";
+            script.src = "https://plugins.stripo.email/resources/uieditor/latest/UIEditor.js";
             script.onload = function () {
-              try {
-                console.log("Stripo script loaded (fresh), initializing editor...");
-                const host = createHost();
-                const opts = prepareEditorOptions();
-                (window as any).UIEditor.initEditor(host, opts);
-              } catch (e) {
-                console.error(
-                  "Initialisation UIEditor après chargement script échouée:",
-                  e
-                );
-                setError("Erreur d'initialisation Stripo après chargement du script.");
-              }
+              (async () => {
+                try {
+                  const host = createHost();
+                  const opts = await prepareEditorOptions();
+                  window.UIEditor.initEditor(host, opts);
+                } catch (e) {
+                  console.error("Initialisation UIEditor échouée:", e);
+                  setError("Erreur d'initialisation Stripo après chargement du script.");
+                }
+              })();
             };
             script.onerror = function () {
               setError("Impossible de charger le script Stripo");
@@ -445,20 +386,14 @@ export default function StripoEditor() {
     loadTemplate();
 
     return () => {
-      if (
-        window.StripoEditorApi &&
-        typeof window.StripoEditorApi.destroy === "function"
-      ) {
+      if (window.StripoEditorApi && typeof window.StripoEditorApi.destroy === "function") {
         try {
           window.StripoEditorApi.destroy();
-        } catch (e) {
-          console.error("Erreur lors du nettoyage de l'éditeur:", e);
-        }
+        } catch {}
       }
       const scriptToRemove = document.getElementById("UiEditorScript");
-      if (scriptToRemove && scriptToRemove.parentNode) {
-        scriptToRemove.parentNode.removeChild(scriptToRemove);
-      }
+      if (scriptToRemove?.parentNode) scriptToRemove.parentNode.removeChild(scriptToRemove);
+
       if (window.__stripoObserver) {
         window.__stripoObserver.disconnect();
         window.__stripoObserver = null;
@@ -470,7 +405,7 @@ export default function StripoEditor() {
     setPreviewHtml(null);
     setIsPreviewOpen(true);
 
-    if (window.StripoEditorApi && window.StripoEditorApi.actionsApi) {
+    if (window.StripoEditorApi?.actionsApi) {
       window.StripoEditorApi.actionsApi.compileEmail({
         callback: function (error: any, html: string) {
           if (error) {
@@ -491,9 +426,7 @@ export default function StripoEditor() {
   };
 
   const handleSaveAndExit = async () => {
-    if (!window.StripoEditorApi || !window.StripoEditorApi.actionsApi) {
-      return;
-    }
+    if (!window.StripoEditorApi?.actionsApi) return;
 
     setIsSaving(true);
 
@@ -510,14 +443,13 @@ export default function StripoEditor() {
             const payload: any = {
               nom: templateName,
               html_code: htmlContent,
-              design_json:
-                templateData ?? { html: templateData?.html, css: templateData?.css },
+              design_json: templateData ?? { html: templateData?.html, css: templateData?.css },
               created_by: user?.id ?? "",
               famille_id: familleId,
             };
 
-            let result;
             try {
+              let result;
               if (mode === "edit" && templateId) {
                 payload.updated_at = now;
                 result = await supabase
@@ -542,43 +474,95 @@ export default function StripoEditor() {
               }
 
               router.push("/templates");
-            } catch (error) {
+            } catch {
               setIsSaving(false);
             }
           },
         });
       });
-    } catch (error) {
+    } catch {
       setIsSaving(false);
     }
   };
 
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+
+  // Ajoute un state pour savoir si on est en mode suppression (new) ou juste quitter (edit)
+  const [backConfirmType, setBackConfirmType] = useState<"new" | "edit">("new");
+
   const handleBack = async () => {
-    if (templateId) {
-      await supabase.from("Templates").delete().eq("id", templateId);
-    }
-    // Redirige selon le type
-    if (type === "fromScratch") {
-      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
-    } else if (type === "catalog") {
-      router.push(
-        `/templates/catalog-selection?name=${encodeURIComponent(templateName)}`
-      );
+    console.log("handleBack mode:", mode, "templateId:", templateId);
+    if (mode === "new" && templateId) {
+      setBackConfirmType("new");
+      setShowBackConfirm(true);
+    } else if (mode === "edit") {
+      setBackConfirmType("edit");
+      setShowBackConfirm(true);
     } else {
-      // Par défaut, retourne à la page de création avec le nom pré-rempli
-      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
+      // Juste retour sans confirmation
+      if (type === "fromScratch") {
+        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}&mode=new`);
+      } else if (type === "catalog") {
+        router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}&mode=new`);
+      } else {
+        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}&mode=new`);
+      }
     }
   };
 
+  // Fonction appelée si l'utilisateur confirme la suppression ou le retour
+  const confirmBackAndDelete = async () => {
+    if (backConfirmType === "new" && templateId) {
+      await supabase.from("Templates").delete().eq("id", templateId);
+    }
+    setShowBackConfirm(false);
+    // Redirige selon le type et le mode
+    if (backConfirmType === "edit") {
+      router.push("/templates");
+    } else {
+      if (type === "fromScratch") {
+        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
+      } else if (type === "catalog") {
+        router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}`);
+      } else {
+        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
+      }
+    }
+  };
+
+  // --- Merge tags UI helpers ---
+  const filteredCatalog = mergeTagsCatalog.map((cat) => {
+    const q = mergeTagsQuery.trim().toLowerCase();
+    if (!q) return cat;
+    return {
+      ...cat,
+      entries: cat.entries.filter((e) => {
+        const hay = `${e.label} ${e.value}`.toLowerCase();
+        return hay.includes(q);
+      }),
+    };
+  }).filter((c) => c.entries.length > 0);
+
+  const onSelectMergeTag = (tagValue: string) => {
+    const cb = mergeTagsCallbackRef.current;
+    mergeTagsCallbackRef.current = null;
+    setIsMergeTagsOpen(false);
+    if (cb) cb(tagValue);
+  };
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Optionnel : tu peux afficher un loader ou rien
+    return null;
+  }
+
   return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100vw",
-        background: "#f5f5f7",
-        position: "relative",
-      }}
-    >
+    <div style={{ height: "100vh", width: "100vw", background: "#f5f5f7", position: "relative" }}>
       {/* Barre du haut */}
       <div
         style={{
@@ -597,7 +581,7 @@ export default function StripoEditor() {
           zIndex: 1000,
         }}
       >
-        {/* Bouton Retour à gauche */}
+        {/* Bouton Retour */}
         <button
           onClick={handleBack}
           disabled={isSaving}
@@ -613,16 +597,9 @@ export default function StripoEditor() {
             alignItems: "center",
             gap: "6px",
             opacity: isSaving ? 0.7 : 1,
-            transition: "background 0.2s",
           }}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path
               d="M15 19l-7-7 7-7"
               stroke="currentColor"
@@ -634,16 +611,7 @@ export default function StripoEditor() {
           Retour
         </button>
 
-        {/* Titre centré */}
-        <div
-          style={{
-            fontWeight: 500,
-            color: "#222",
-            fontSize: "1.1rem",
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
+        <div style={{ fontWeight: 500, color: "#222", fontSize: "1.1rem", flex: 1, textAlign: "center" }}>
           {mode === "edit" ? "Modification" : "Création"}: {templateName}
         </div>
 
@@ -659,8 +627,6 @@ export default function StripoEditor() {
               color: "#222",
               fontWeight: 600,
               cursor: !isSaving ? "pointer" : "not-allowed",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-              transition: "background 0.2s",
               opacity: !isSaving ? 1 : 0.7,
               display: "flex",
               alignItems: "center",
@@ -682,72 +648,12 @@ export default function StripoEditor() {
               color: "white",
               fontWeight: 600,
               cursor: !isSaving ? "pointer" : "not-allowed",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-              transition: "background 0.2s",
               opacity: !isSaving ? 1 : 0.7,
               display: "flex",
               alignItems: "center",
             }}
           >
-            {isSaving ? (
-              <>
-                <svg
-                  className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Sauvegarde...
-              </>
-            ) : (
-              <>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  style={{ marginRight: "4px" }}
-                >
-                  <path
-                    d="M19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16L21 8V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M17 21V13H7V21"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M7 3V8H15"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Sauvegarder et quitter
-              </>
-            )}
+            {isSaving ? "Sauvegarde..." : "Sauvegarder et quitter"}
           </button>
         </div>
       </div>
@@ -771,33 +677,75 @@ export default function StripoEditor() {
         </div>
       )}
 
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          background: "#f5f5f7",
-          paddingTop: 56,
-          boxSizing: "border-box",
-        }}
-      />
+      <div ref={containerRef} style={{ width: "100%", height: "100%", background: "#f5f5f7", paddingTop: 56 }} />
 
+      {/* External Merge Tags Dialog */}
+      <Dialog open={isMergeTagsOpen} onOpenChange={setIsMergeTagsOpen}>
+        <DialogContent className="max-w-2xl w-full max-h-[80vh] overflow-hidden p-0 flex flex-col">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="text-lg font-semibold">Balises Sendy</DialogTitle>
+          </DialogHeader>
+
+          <div className="p-4 border-b flex items-center gap-2">
+            <Search className="h-4 w-4 text-gray-500" />
+            <input
+              value={mergeTagsQuery}
+              onChange={(e) => setMergeTagsQuery(e.target.value)}
+              placeholder="Rechercher (ex: prenom, entreprise...)"
+              className="w-full outline-none text-sm"
+            />
+          </div>
+
+          <div className="p-4 overflow-auto flex-1">
+            {filteredCatalog.length === 0 ? (
+              <div className="text-sm text-gray-500">Aucune balise.</div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {filteredCatalog.map((cat) => (
+                  <div key={cat.category}>
+                    <div className="text-sm font-semibold mb-2">{cat.category}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {cat.entries.map((e) => (
+                        <button
+                          key={`${cat.category}:${e.value}`}
+                          onClick={() => onSelectMergeTag(e.value)}
+                          className="text-left border rounded-md p-3 hover:bg-gray-50"
+                        >
+                          <div className="text-sm font-medium">{e.label}</div>
+                          <div className="text-xs text-gray-600">{e.value}</div>
+                          {e.previewValue ? (
+                            <div className="text-xs text-gray-400 mt-1">
+                              Ex: {e.previewValue}
+                            </div>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t flex justify-end">
+            <Button variant="outline" onClick={() => setIsMergeTagsOpen(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog (inchangé) */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-5xl w-full h-[90vh] p-0 flex flex-col [&>button]:hidden">
           <DialogHeader className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold">
-                Aperçu du template
-              </DialogTitle>
+              <DialogTitle className="text-xl font-bold">Aperçu du template</DialogTitle>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 ${
-                    previewDevice === "mobile"
-                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
-                      : ""
-                  }`}
+                  className={`h-8 w-8 ${previewDevice === "mobile" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
                   onClick={() => setPreviewDevice("mobile")}
                   aria-label="Mobile"
                 >
@@ -806,11 +754,7 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 ${
-                    previewDevice === "tablet"
-                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
-                      : ""
-                  }`}
+                  className={`h-8 w-8 ${previewDevice === "tablet" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
                   onClick={() => setPreviewDevice("tablet")}
                   aria-label="Tablet"
                 >
@@ -819,11 +763,7 @@ export default function StripoEditor() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 ${
-                    previewDevice === "desktop"
-                      ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]"
-                      : ""
-                  }`}
+                  className={`h-8 w-8 ${previewDevice === "desktop" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
                   onClick={() => setPreviewDevice("desktop")}
                   aria-label="Desktop"
                 >
@@ -841,6 +781,7 @@ export default function StripoEditor() {
               </div>
             </div>
           </DialogHeader>
+
           <div className="flex-1 overflow-auto p-4 bg-gray-50 flex items-center justify-center">
             <div
               className={`bg-white border rounded-lg overflow-hidden mx-auto transition-all duration-300 ${
@@ -851,18 +792,8 @@ export default function StripoEditor() {
                   : "w-[1200px] h-full max-h-[90%]"
               }`}
               style={{
-                width:
-                  previewDevice === "mobile"
-                    ? 375
-                    : previewDevice === "tablet"
-                    ? 768
-                    : 1200,
-                height:
-                  previewDevice === "mobile"
-                    ? "auto"
-                    : previewDevice === "tablet"
-                    ? 900
-                    : "90%",
+                width: previewDevice === "mobile" ? 375 : previewDevice === "tablet" ? 768 : 1200,
+                height: previewDevice === "mobile" ? "auto" : previewDevice === "tablet" ? 900 : "90%",
                 minHeight: previewDevice === "mobile" ? "667px" : "auto",
                 border: "none",
                 background: "#fff",
@@ -888,6 +819,44 @@ export default function StripoEditor() {
                 </div>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation retour/suppression */}
+      <Dialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
+        <DialogContent className="rounded-xl shadow-2xl px-8 py-8 max-w-xl">
+          <div className="flex flex-col items-center text-center gap-4">
+            <DialogHeader className="mb-2">
+              <DialogTitle className="mb-4 text-2xl font-bold">
+                Êtes-vous sûr de vouloir quitter ?
+              </DialogTitle>
+              <div className="text-[15px] text-muted-foreground mb-4">
+                {backConfirmType === "new"
+                  ? "Cette action est irréversible. Le template sera définitivement supprimé."
+                  : "Les modifications non sauvegardées seront perdues."}
+              </div>
+            </DialogHeader>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <Button
+              variant="outline"
+              className="bg-[#FFFEFF] text-[#23272f] border border-[#e0e0e0] hover:bg-[#fafbfc] hover:border-[#bdbdbd] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+              onClick={() => setShowBackConfirm(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant={backConfirmType === "new" ? "destructive" : "default"}
+              className={backConfirmType === "new"
+                ? "bg-[#d21c3c] border-[#d21c3c] text-white hover:bg-[#b81a34] hover:border-[#b81a34] hover:opacity-90 font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"
+                : "bg-[#6c43e0] text-white hover:bg-[#4f32a7] font-semibold rounded-md h-10 px-4 py-2 shadow-none transition"}
+              onClick={confirmBackAndDelete}
+            >
+              {backConfirmType === "new"
+                ? "Supprimer et quitter"
+                : "Quitter sans sauvegarder"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

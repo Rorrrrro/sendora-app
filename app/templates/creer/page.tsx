@@ -82,8 +82,8 @@ const CreateTemplatePage: React.FC = () => {
         return;
       }
 
-      // 3. Rediriger vers l'éditeur avec l'id du nouveau template (mode=edit)
-      router.push(`/templates/editeur?id=${data.id}&name=${encodeURIComponent(templateName)}&mode=edit`);
+      // 3. Rediriger vers l'éditeur avec l'id du nouveau template (mode=new)
+      router.push(`/templates/editeur?id=${data.id}&name=${encodeURIComponent(templateName)}&mode=new`);
     } catch (err) {
       toast({
         title: "Erreur",
@@ -97,7 +97,7 @@ const CreateTemplatePage: React.FC = () => {
   const handleCreateFromTemplate = () => {
     if (!validateTemplateName()) return;
     // Redirige vers la nouvelle page de sélection de template catalog
-    router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}`);
+    router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}&mode=new`);
   };
 
   const handleCreateFromHtml = () => {

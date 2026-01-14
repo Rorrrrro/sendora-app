@@ -237,7 +237,7 @@ const CatalogSelectionPage: React.FC = () => {
       router.push(
         `/templates/editeur?id=${data.id}&name=${encodeURIComponent(
           templateName
-        )}&mode=edit&type=catalog`
+        )}&mode=new&type=catalog`
       );
     } catch {
       toast({
