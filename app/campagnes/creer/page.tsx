@@ -1,16 +1,18 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, X, CheckCircle2, Circle, Check, HelpCircle } from 'lucide-react';
+import { Pencil, X, CheckCircle2, Circle, Check, HelpCircle, Eye, Smartphone, Tablet, Monitor, Cloud, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from "@/components/dashboard-layout";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUser } from "@/contexts/user-context";
+import { createBrowserClient } from "@/lib/supabase";
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { createBrowserClient } from '@/lib/supabase';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function CreateCampaignPage() {
   const [campaignName, setCampaignName] = useState('');
@@ -19,6 +21,7 @@ export default function CreateCampaignPage() {
   const [senderValidated, setSenderValidated] = useState(false);
   const [recipientsValidated, setRecipientsValidated] = useState(false);
   const [objectValidated, setObjectValidated] = useState(false);
+  const [contentValidated, setContentValidated] = useState(false);
   const router = useRouter();
   const { user } = useUser();
   const [expediteurs, setExpediteurs] = useState<{ id: string; email: string; nom: string; statut_domaine?: string }[]>([]);
@@ -33,6 +36,102 @@ export default function CreateCampaignPage() {
   const [contactsByList, setContactsByList] = useState<{ [listId: string]: { id: string; email: string }[] }>({});
   const [subjectLine, setSubjectLine] = useState('');
   const [previewText, setPreviewText] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+  // États pour les paramètres additionnels
+  const [useReplyToEmail, setUseReplyToEmail] = useState(false);
+  const [replyToEmail, setReplyToEmail] = useState('');
+  const [useAttachment, setUseAttachment] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [useCustomUnsubscribePage, setUseCustomUnsubscribePage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pagination pour les templates
+  const templatesPerPage = 8;
+  const [currentTemplatePage, setCurrentTemplatePage] = useState(1);
+  const totalTemplates = templates.length;
+  const totalTemplatePages = Math.max(1, Math.ceil(totalTemplates / templatesPerPage));
+  const paginatedTemplates = templates.slice(
+    (currentTemplatePage - 1) * templatesPerPage,
+    currentTemplatePage * templatesPerPage
+  );
+
+  // Aperçu modal
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
+
+  // Pour le scale de l'aperçu
+  const PREVIEW_MAX_WIDTH = 320;
+  const PREVIEW_CLOSED_HEIGHT = 180;
+  const CARD_CLOSED_HEIGHT = 300;
+  const CARD_CHROME_HEIGHT = CARD_CLOSED_HEIGHT - PREVIEW_CLOSED_HEIGHT;
+  const [templateMeta, setTemplateMeta] = useState<Record<string, any>>({});
+  const previewRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
+  const roRef = useRef<ResizeObserver | null>(null);
+
+  // ResizeObserver sur les containers de preview (pour recalculer le scale)
+  useEffect(() => {
+    if (roRef.current) roRef.current.disconnect();
+
+    roRef.current = new ResizeObserver(() => {
+      setTemplateMeta((prev) => ({ ...prev }));
+    });
+
+    paginatedTemplates.forEach((t) => {
+      const pr = previewRefs.current[t.id];
+      if (pr) roRef.current?.observe(pr);
+    });
+
+    return () => roRef.current?.disconnect();
+  }, [paginatedTemplates]);
+
+  const handleIframeLoad = (templateId: string) => {
+    const iframe = iframeRefs.current[templateId];
+    const previewEl = previewRefs.current[templateId];
+    if (!iframe || !previewEl) return;
+
+    try {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      const naturalWidth =
+        doc.documentElement.scrollWidth || doc.body?.scrollWidth || 600;
+      const naturalHeight =
+        doc.documentElement.scrollHeight || doc.body?.scrollHeight || 800;
+
+      const previewWidth = previewEl.clientWidth || PREVIEW_MAX_WIDTH;
+      const scale = naturalWidth > 0 ? previewWidth / naturalWidth : 1;
+
+      setTemplateMeta((p) => ({
+        ...p,
+        [templateId]: { scale, naturalWidth, naturalHeight, previewWidth },
+      }));
+    } catch {
+      const previewWidth = previewEl.clientWidth || PREVIEW_MAX_WIDTH;
+      const naturalWidth = 600;
+      const naturalHeight = 800;
+      const scale = previewWidth / naturalWidth;
+
+      setTemplateMeta((p) => ({
+        ...p,
+        [templateId]: { scale, naturalWidth, naturalHeight, previewWidth },
+      }));
+    }
+  };
+
+  // Aperçu modal
+  const handlePreview = (template: any) => {
+    setPreviewHtml(template.html_code || "");
+    setPreviewTitle(template.nom || "");
+    setPreviewOpen(true);
+    setPreviewDevice("desktop"); // Ajout pour reset device à chaque ouverture
+  };
 
   // Fonction pour détecter les emails génériques
   const isGenericEmail = (email: string) => {
@@ -119,6 +218,99 @@ export default function CreateCampaignPage() {
     const exp = expediteurs.find(e => e.email === email);
     setSenderName(exp?.nom || '');
     setSenderDomaineStatus(exp?.statut_domaine);
+    // Mettre à jour l'email de réponse si l'option est activée
+    if (useReplyToEmail && !replyToEmail) {
+      setReplyToEmail(email);
+    }
+  };
+
+  // Mettre à jour l'email de réponse quand l'option est activée
+  useEffect(() => {
+    if (useReplyToEmail && !replyToEmail && senderEmail) {
+      setReplyToEmail(senderEmail);
+    }
+  }, [useReplyToEmail, senderEmail, replyToEmail]);
+
+  // Handlers pour la gestion des fichiers
+  const validateFiles = (newFiles: File[], existingFiles: File[] = []): string | null => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/gif', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'];
+    const allowedExtensions = ['.jpeg', '.jpg', '.gif', '.png', '.pdf', '.zip'];
+    const maxTotalSize = 10 * 1024 * 1024; // 10 Mo total
+
+    // Vérifier le type de chaque nouveau fichier
+    for (const file of newFiles) {
+      const isValidType = allowedTypes.includes(file.type) || allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+      if (!isValidType) {
+        return `Type de fichier non autorisé pour "${file.name}". Formats acceptés : JPEG, JPG, GIF, PNG, PDF, ZIP`;
+      }
+    }
+
+    // Vérifier la taille totale
+    const existingSize = existingFiles.reduce((total, file) => total + file.size, 0);
+    const newSize = newFiles.reduce((total, file) => total + file.size, 0);
+    const totalSize = existingSize + newSize;
+
+    if (totalSize > maxTotalSize) {
+      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+      return `Taille totale dépassée (${totalSizeMB} Mo). Limite globale : 10 Mo`;
+    }
+
+    return null;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      const error = validateFiles(selectedFiles, attachmentFiles);
+      if (error) {
+        setAttachmentError(error);
+      } else {
+        setAttachmentError(null);
+        setAttachmentFiles(prev => [...prev, ...selectedFiles]);
+      }
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      const error = validateFiles(droppedFiles, attachmentFiles);
+      if (error) {
+        setAttachmentError(error);
+      } else {
+        setAttachmentError(null);
+        setAttachmentFiles(prev => [...prev, ...droppedFiles]);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const removeAttachment = () => {
+    setAttachmentFiles([]);
+    setAttachmentError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeIndividualFile = (indexToRemove: number) => {
+    setAttachmentFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    setAttachmentError(null);
   };
 
   const handleSectionClick = (section: string) => {
@@ -161,8 +353,121 @@ export default function CreateCampaignPage() {
   const quotaDisponible = Math.max(0, quotaMensuel - mailsEnvoyesCeMois);
   const progress = quotaDisponible > 0 ? Math.min(100, (totalDestinataires / quotaDisponible) * 100) : 0;
 
+  // Récupère les templates de la famille de l'utilisateur
+  useEffect(() => {
+    async function fetchTemplates() {
+      if (!user) return;
+      const supabase = createBrowserClient();
+      let familleId = user?.compte_parent_id || user?.id;
+      const { data, error } = await supabase
+        .from("Templates")
+        .select("*")
+        .eq("famille_id", familleId)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setTemplates(data);
+      }
+      setLoadingTemplates(false);
+    }
+    fetchTemplates();
+  }, [user]);
+
+  const [previewDevice, setPreviewDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
+
+  // Helper pour le z-index dynamique des sections
+  const sectionZ = (id: string) =>
+    expandedSection === id ? "z-50" : expandedSection ? "z-10" : "z-20";
+
   return (
     <AppLayout>
+      {/* Dialog preview GLOBAL : doit être monté même quand la box "Contenu" est fermée */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-5xl w-full h-[90vh] p-0 flex flex-col [&>button]:hidden">
+          <DialogHeader className="p-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-bold">
+                {previewTitle || "Aperçu du template"}
+              </DialogTitle>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 ${previewDevice === "mobile" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
+                  onClick={() => setPreviewDevice("mobile")}
+                  aria-label="Mobile"
+                >
+                  <Smartphone className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 ${previewDevice === "tablet" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
+                  onClick={() => setPreviewDevice("tablet")}
+                  aria-label="Tablet"
+                >
+                  <Tablet className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-8 w-8 ${previewDevice === "desktop" ? "bg-[#f0eafc] text-[#6c43e0] border-[#6c43e0]" : ""}`}
+                  onClick={() => setPreviewDevice("desktop")}
+                  aria-label="Desktop"
+                >
+                  <Monitor className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setPreviewOpen(false)}
+                  aria-label="Fermer"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-4 bg-gray-50 flex items-center justify-center">
+            <div
+              className={`bg-white border rounded-lg overflow-hidden mx-auto transition-all duration-300 ${
+                previewDevice === "mobile"
+                  ? "w-[375px] max-h-[90%] overflow-y-auto"
+                  : previewDevice === "tablet"
+                  ? "w-[768px] h-[900px] max-h-full"
+                  : "w-[1200px] h-full max-h-[90%]"
+              }`}
+              style={{
+                width: previewDevice === "mobile" ? 375 : previewDevice === "tablet" ? 768 : 1200,
+                height: previewDevice === "mobile" ? "auto" : previewDevice === "tablet" ? 900 : "90%",
+                minHeight: previewDevice === "mobile" ? "667px" : "auto",
+                border: "none",
+                background: "#fff",
+                boxShadow: "0 1px 4px #e0e0e0",
+                display: "block",
+              }}
+            >
+              {previewHtml ? (
+                <iframe
+                  srcDoc={previewHtml}
+                  style={{
+                    width: "100%",
+                    height: previewDevice === "mobile" ? "auto" : "100%",
+                    minHeight: previewDevice === "mobile" ? "667px" : "auto",
+                    border: "none",
+                    background: "#fff",
+                  }}
+                  title={`Aperçu ${previewTitle}`}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  Pas de contenu HTML à afficher
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="min-h-screen bg-[#F9FAFB]">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-white rounded-lg shadow-sm p-8">
@@ -216,7 +521,7 @@ export default function CreateCampaignPage() {
             {/* Bloc principal */}
             <div className="space-y-5 relative">
               {/* Expéditeur */}
-              <div className="relative z-20">
+              <div className={`relative ${sectionZ("sender")}`}>
                 <div 
                   className={`rounded-2xl border transition-all overflow-hidden
                     ${expandedSection === 'sender' 
@@ -451,7 +756,7 @@ export default function CreateCampaignPage() {
               </div>
 
               {/* Destinataires */}
-              <div className="relative z-20">
+              <div className={`relative ${sectionZ("recipients")}`}>
                 <div 
                   className={`rounded-2xl border transition-all overflow-hidden
                     ${expandedSection === 'recipients' 
@@ -570,7 +875,7 @@ export default function CreateCampaignPage() {
               </div>
 
               {/* Objet */}
-              <div className="relative z-20">
+              <div className={`relative ${sectionZ("object")}`}>
                 <div 
                   className={`rounded-2xl border transition-all overflow-hidden
                     ${expandedSection === 'object' 
@@ -596,16 +901,16 @@ export default function CreateCampaignPage() {
                           {objectValidated && (
                             <div className="flex flex-col gap-1">
                               <div className="text-base">
-                                <span className="font-semibold text-[#3d247a]">Objet de la campagne:</span> <span className="text-gray-500">{subjectLine}</span>
+                                <span className="font-semibold text-[#3d247a]">Objet de la campagne :</span> <span className="text-gray-500">{subjectLine}</span>
                               </div>
                               <div className="text-base">
-                                <span className="font-semibold text-[#3d247a]">Aperçu:</span> <span className="text-gray-500">{previewText}</span>
+                                <span className="font-semibold text-[#3d247a]">Aperçu :</span> <span className="text-gray-500">{previewText}</span>
                               </div>
                             </div>
                           )}
                         </div>
                       </div>
-                      {!expandedSection && (
+                      {!expandedSection && (  
                         <Button 
                           variant="outline" 
                           onClick={() => handleSectionClick('object')}
@@ -761,24 +1066,57 @@ export default function CreateCampaignPage() {
                 </div>
               </div>
 
-              {/* Design */}
-              <div className="relative z-20">
+              {/* Design -> Contenu */}
+              <div className={`relative ${sectionZ("design")}`} style={{ overflow: "visible" }}>
                 <div 
-                  className={`rounded-2xl border transition-all overflow-hidden
+                  className={`rounded-2xl border transition-all
                     ${expandedSection === 'design' 
-                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4' 
+                      ? 'bg-white border-[#6C43E0] relative z-20 transform scale-105 my-4 min-h-[500px]' 
                       : 'bg-[#FAFAFD] border-[#E0E1E1] hover:bg-[#f4f4fd] hover:border-[#6C43E0]'
                     }
                     ${expandedSection && expandedSection !== 'design' ? 'opacity-50' : ''}
                   `}
+                  style={{
+                    transition: 'min-height 0.3s cubic-bezier(.4,0,.2,1)',
+                    minHeight: expandedSection === 'design' ? 500 : undefined,
+                    overflow: "visible",
+                  }}
                 >
-                  <div className="p-6">
+                  <div className="p-6" style={{overflow: "visible"}}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <Circle className="w-5 h-5 text-gray-300" />
+                        {contentValidated ? (
+                          <CheckCircle2 className="w-5 h-5 text-[#6c43e0]" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-300" />
+                        )}
                         <div>
-                          <h3 className="text-xl font-bold text-[#111827]">Design</h3>
-                          <p className="text-sm text-gray-500">Créez le contenu de votre email.</p>
+                          <h3 className="text-xl font-bold text-[#111827]">Contenu</h3>
+                          {selectedTemplateId ? (
+                            <div className="flex items-center gap-2 text-base">
+                              <span className="font-semibold text-[#3d247a]">Template sélectionné :</span>
+                              <span className="text-gray-500">
+                                {templates.find(t => t.id === selectedTemplateId)?.nom || ""}
+                              </span>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="flex items-center justify-center rounded-full w-7 h-7 text-muted-foreground hover:text-[#6c43e0] hover:bg-[#f4f4fd]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const tpl = templates.find(t => t.id === selectedTemplateId);
+                                  if (tpl) handlePreview(tpl);
+                                }}
+                                title="Aperçu du template sélectionné"
+                                aria-label="Aperçu du template sélectionné"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">Le message que vous allez envoyer.</p>
+                          )}
                         </div>
                       </div>
                       {!expandedSection && (
@@ -787,37 +1125,224 @@ export default function CreateCampaignPage() {
                           onClick={() => handleSectionClick('design')}
                           className="mt-4 md:mt-0 border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] whitespace-nowrap px-6 py-3 text-base font-semibold rounded-xl"
                         >
-                          Commencer le design
+                          {selectedTemplateId ? 'Modifier le contenu' : 'Choisir un modèle'}
                         </Button>
                       )}
                     </div>
                     {expandedSection === 'design' && (
-                      <div className="flex flex-col items-center gap-4 mt-8">
-                        <div className="w-full">
-                          {/* Contenu pour l'édition du design */}
-                          <div className="flex justify-center gap-3 mt-8">
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setExpandedSection(null)}
-                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                      <>
+                        {/* Aperçu modal type /templates */}
+                        {/* SUPPRIMER le <Dialog> ici, il n'est plus nécessaire */}
+                        {/* Grille des templates avec bouton "Choisir" en overlay */}
+                        <div
+                          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full mt-6"
+                          style={{ overflow: "visible", position: "relative" }}
+                        >
+                          {paginatedTemplates.map((template, idx) => {
+                            const meta = templateMeta[template.id];
+                            const scale = meta?.scale ?? 1;
+                            const naturalHeight = meta?.naturalHeight ?? 700;
+                            const previewHeight = Math.ceil(naturalHeight * scale);
+                            const cardHeight = previewHeight + CARD_CHROME_HEIGHT;
+                            return (
+                              <div key={template.id} className="relative group" style={{marginTop: idx < 4 ? 12 : 0}}>
+                                <div
+                                  style={{ height: CARD_CLOSED_HEIGHT, position: "relative" }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.classList.add('force-hover');
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.classList.remove('force-hover');
+                                  }}
+                                >
+                                  <div
+                                    className="template-card absolute inset-0 bg-white border border-[#E0E1E1] rounded-2xl shadow-sm cursor-pointer flex flex-col items-center px-0 pt-3 pb-6 transition-all"
+                                    style={{
+                                      height: CARD_CLOSED_HEIGHT,
+                                      ["--previewHeight" as any]: `${previewHeight}px`,
+                                      ["--cardHeight" as any]: `${cardHeight}px`,
+                                    } as React.CSSProperties}
+                                    onClick={() => setSelectedTemplateId(template.id)}
+                                  >
+                                    <div className="w-full px-4 mb-1 flex items-center justify-between">
+                                      <div className="font-semibold text-base truncate">{template.nom}</div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex items-center justify-center rounded-full w-8 h-8 text-muted-foreground hover:text-[#6c43e0] hover:bg-[#f4f4fd]"
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          handlePreview(template);
+                                        }}
+                                        style={{ display: "inline-flex", flex: "0 0 auto" }}
+                                        title="Aperçu"
+                                        aria-label="Aperçu"
+                                      >
+                                        <Eye className="w-6 h-6" />
+                                      </Button>
+                                    </div>
+                                    <div className="w-full flex justify-center items-start px-4">
+                                      <div
+                                        ref={(el) => {
+                                          previewRefs.current[template.id] = el;
+                                        }}
+                                        className="template-preview bg-white rounded-xl border border-[#ececf6] shadow overflow-hidden"
+                                        style={{
+                                          width: "100%",
+                                          maxWidth: PREVIEW_MAX_WIDTH,
+                                          height: PREVIEW_CLOSED_HEIGHT,
+                                          overflow: "hidden", // Ajout pour forcer la hauteur fermée
+                                        }}
+                                      >
+                                        <div
+                                          className="template-preview-inner"
+                                          style={{
+                                            width: meta?.naturalWidth ? `${meta.naturalWidth}px` : "600px",
+                                            height: meta?.naturalHeight ? `${meta.naturalHeight}px` : "800px",
+                                            transform: `scale(${scale})`,
+                                            transformOrigin: "top left",
+                                          }}
+                                        >
+                                          <iframe
+                                            ref={(el) => {
+                                              iframeRefs.current[template.id] = el;
+                                            }}
+                                            title={`preview-${template.id}`}
+                                            srcDoc={template.html_code}
+                                            onLoad={() => handleIframeLoad(template.id)}
+                                            style={{
+                                              width: "100%",
+                                              height: "100%",
+                                              border: "0",
+                                              display: "block",
+                                              background: "white",
+                                              pointerEvents: "none",
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {/* Zone bouton fixe */}
+                                    <div
+                                      className="w-full mt-auto px-4 pt-4 z-10"
+                                      style={{ pointerEvents: "auto" }}
+                                      onMouseEnter={e => {
+                                        e.currentTarget.parentElement?.parentElement?.classList.remove('force-hover');
+                                      }}
+                                    >
+                                      <Button
+                                        className={`w-full ${selectedTemplateId === template.id ? 'bg-[#6c43e0] hover:bg-[#4f32a7] text-white border-[#6c43e0]' : ''}`}
+                                        variant={selectedTemplateId === template.id ? "default" : "outline"}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setSelectedTemplateId(template.id);
+                                        }}
+                                        style={selectedTemplateId === template.id ? {backgroundColor: '#6c43e0', borderColor: '#6c43e0', color: '#fff'} : {}}
+                                      >
+                                        {selectedTemplateId === template.id ? "Sélectionné" : "Choisir"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <style jsx>{`
+                                  .template-card {
+                                    transition: height 300ms ease, transform 200ms ease, box-shadow 200ms ease;
+                                    z-index: 10;
+                                    overflow-y: hidden;
+                                    display: flex;
+                                    flex-direction: column;
+                                    background: #fff !important;
+                                  }
+                                  .group:hover .template-card,
+                                  .force-hover .template-card {
+                                    height: var(--cardHeight) !important;
+                                    z-index: 100 !important;
+                                    transform: translateY(-6px);
+                                    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+                                    overflow-y: auto !important;
+                                    max-height: 80vh !important;
+                                    display: flex;
+                                    flex-direction: column;
+                                    background: #fff !important;
+                                    border: 1px solid #E0E1E1 !important;
+                                  }
+                                  .group:hover .template-preview,
+                                  .force-hover .template-preview {
+                                    height: var(--previewHeight) !important;
+                                    max-width: none !important;
+                                    width: 100% !important;
+                                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+                                  }
+                                  .template-preview {
+                                    transition: height 300ms ease, max-width 200ms ease, box-shadow 200ms ease;
+                                  }
+                                  .template-card > .absolute {
+                                    transition: bottom 0.2s;
+                                  }
+                                `}</style>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Pagination */}
+                        {totalTemplatePages > 1 && (
+                          <div className="flex items-center gap-4 justify-end text-sm mt-6">
+                            <span>
+                              {paginatedTemplates.length === 0
+                                ? "0"
+                                : `${(currentTemplatePage - 1) * templatesPerPage + 1}-${Math.min(currentTemplatePage * templatesPerPage, totalTemplates)} sur ${totalTemplates}`}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-[#f4f4fd]"
+                              onClick={() => setCurrentTemplatePage(p => Math.max(1, p - 1))}
+                              disabled={currentTemplatePage === 1}
+                              aria-label="Page précédente"
                             >
-                              Annuler
+                              &lt;
                             </Button>
-                            <Button 
-                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            <span className="font-semibold">{currentTemplatePage}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-[#f4f4fd]"
+                              onClick={() => setCurrentTemplatePage(p => Math.min(totalTemplatePages, p + 1))}
+                              disabled={currentTemplatePage === totalTemplatePages}
+                              aria-label="Page suivante"
                             >
-                              Enregistrer
+                              &gt;
                             </Button>
                           </div>
+                        )}
+                        {/* Boutons Annuler / Enregistrer */}
+                        <div className="flex justify-center gap-3 mt-8 w-full">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setExpandedSection(null)}
+                            className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                          >
+                            Annuler
+                          </Button>
+                          <Button 
+                            className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            disabled={!selectedTemplateId}
+                            onClick={() => {
+                              setContentValidated(true);
+                              setExpandedSection(null);
+                            }}
+                          >
+                            Enregistrer
+                          </Button>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Paramètres additionnels */}
-              <div className="relative z-20">
+              <div className={`relative ${sectionZ("params")}`}>
                 <div 
                   className={`rounded-2xl border transition-all overflow-hidden
                     ${expandedSection === 'params' 
@@ -846,23 +1371,179 @@ export default function CreateCampaignPage() {
                       )}
                     </div>
                     {expandedSection === 'params' && (
-                      <div className="flex flex-col items-center gap-4 mt-8">
-                        <div className="w-full">
-                          {/* Contenu pour l'édition des paramètres */}
-                          <div className="flex justify-center gap-3 mt-8">
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setExpandedSection(null)}
-                              className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
-                            >
-                              Annuler
-                            </Button>
-                            <Button 
-                              className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
-                            >
-                              Enregistrer
-                            </Button>
+                      <div className="mt-8">
+                        <div className="space-y-8 max-w-2xl">
+                          {/* Adresse de réponse différente */}
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <Checkbox
+                                id="reply-to-email"
+                                checked={useReplyToEmail}
+                                onCheckedChange={(checked) => {
+                                  setUseReplyToEmail(Boolean(checked));
+                                  if (!checked) {
+                                    setReplyToEmail('');
+                                  }
+                                }}
+                              />
+                              <label 
+                                htmlFor="reply-to-email" 
+                                className="text-lg font-semibold text-[#2d1863] cursor-pointer"
+                              >
+                                Utiliser une adresse de réponse différente
+                              </label>
+                            </div>
+                            {useReplyToEmail && (
+                              <div className="ml-6">
+                                <Input
+                                  type="email"
+                                  value={replyToEmail}
+                                  onChange={(e) => setReplyToEmail(e.target.value)}
+                                  placeholder="Entrez l'adresse de réponse"
+                                  className="max-w-md"
+                                />
+                              </div>
+                            )}
                           </div>
+
+                          {/* Pièce jointe */}
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <Checkbox
+                                id="attachment"
+                                checked={useAttachment}
+                                onCheckedChange={(checked) => {
+                                  setUseAttachment(Boolean(checked));
+                                  if (!checked) {
+                                    setAttachmentFiles([]);
+                                    setAttachmentError(null);
+                                    if (fileInputRef.current) {
+                                      fileInputRef.current.value = '';
+                                    }
+                                  }
+                                }}
+                              />
+                              <label 
+                                htmlFor="attachment" 
+                                className="text-lg font-semibold text-[#2d1863] cursor-pointer"
+                              >
+                                Ajouter une pièce jointe
+                              </label>
+                            </div>
+                            {useAttachment && (
+                              <div className="ml-6">
+                                {/* Zone de drop toujours visible */}
+                                <div
+                                  className={`border-2 rounded-xl p-6 text-center transition-colors cursor-pointer bg-[#FFFEFF] flex flex-col items-center justify-center max-w-md mb-4
+                                    ${attachmentError 
+                                      ? 'border-red-500 bg-red-50' 
+                                      : isDragActive 
+                                        ? 'border-[#6c43e0] bg-[#f4f4fd]' 
+                                        : 'border-[#bdbdbd] hover:border-[#6c43e0] hover:bg-[#fafbfc]'
+                                    }`
+                                  }
+                                  onDrop={handleDrop}
+                                  onDragOver={handleDragOver}
+                                  onDragEnter={handleDragEnter}
+                                  onDragLeave={handleDragLeave}
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  <Cloud className={`w-8 h-8 mb-2 ${attachmentError ? 'text-red-400' : 'text-gray-300'}`} />
+                                  <p className={`text-sm font-light mb-1 ${
+                                    attachmentError ? 'text-red-600' : 'text-[#23272f]'
+                                  }`}>
+                                    Ajouter des fichiers
+                                  </p>
+                                  <p className={`text-xs ${
+                                    attachmentError ? 'text-red-500' : 'text-gray-500'
+                                  }`}>
+                                    JPEG, JPG, GIF, PNG, PDF, ZIP - Max 10 Mo total
+                                  </p>
+                                </div>
+                                
+                                {attachmentError && (
+                                  <p className="text-red-500 text-sm mb-4 max-w-md">{attachmentError}</p>
+                                )}
+
+                                {/* Liste des fichiers sélectionnés */}
+                                {attachmentFiles.length > 0 && (
+                                  <div className="space-y-2 max-w-md">
+                                    <div className="text-sm font-medium text-gray-700 mb-2">
+                                      Fichiers sélectionnés ({attachmentFiles.length}) - 
+                                      {(attachmentFiles.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(1)} Mo / 10 Mo
+                                    </div>
+                                    {attachmentFiles.map((file, index) => (
+                                      <div key={`${file.name}-${index}`} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                              <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="font-medium text-green-900 text-sm truncate">{file.name}</p>
+                                              <p className="text-xs text-green-700">
+                                                {(file.size / (1024 * 1024)).toFixed(2)} Mo
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeIndividualFile(index)}
+                                            className="text-green-600 hover:text-green-800 hover:bg-green-100 w-6 h-6 flex-shrink-0"
+                                          >
+                                            <X className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  multiple
+                                  onChange={handleFileChange}
+                                  className="hidden"
+                                  accept=".jpeg,.jpg,.gif,.png,.pdf,.zip"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Page de désinscription personnalisée */}
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <Checkbox
+                                id="custom-unsubscribe"
+                                checked={useCustomUnsubscribePage}
+                                onCheckedChange={(checked) => setUseCustomUnsubscribePage(Boolean(checked))}
+                              />
+                              <label 
+                                htmlFor="custom-unsubscribe" 
+                                className="text-lg font-semibold text-[#2d1863] cursor-pointer"
+                              >
+                                Utiliser une page de désinscription personnalisée
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Boutons Annuler / Enregistrer */}
+                        <div className="flex justify-center gap-3 mt-12">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setExpandedSection(null)}
+                            className="border-[#e0e0e0] bg-[#fffeff] text-[#23272f] hover:bg-[#fafbfc] hover:border-[#bdbdbd] w-40"
+                          >
+                            Annuler
+                          </Button>
+                          <Button 
+                            className="bg-[#6c43e0] hover:bg-[#4f32a7] text-white w-40"
+                            onClick={() => setExpandedSection(null)}
+                          >
+                            Enregistrer
+                          </Button>
                         </div>
                       </div>
                     )}

@@ -244,6 +244,50 @@ export default function StripoEditor() {
             let tags: MergeTagCategory[] = [];
             try {
               tags = await getCachedMergeTags();
+              // Remplace le label "Name" par "Prénom + Nom"
+              tags = tags.map(cat => ({
+                ...cat,
+                entries: cat.entries.map(e =>
+                  e.label === "Name"
+                    ? { ...e, label: "Prénom + Nom" }
+                    : e
+                )
+              }));
+
+              // Ajoute une catégorie "Liens spéciaux" pour les merge tags
+              const systemTags: MergeTagCategory = {
+                category: "Liens spéciaux",
+                entries: [
+                  {
+                    label: "Lien désinscription", // <-- raccourci pour éviter la coupure
+                    value: "[unsubscribe]",
+                    previewValue: "https://sendy-url/unsubscribe"
+                  },
+                  {
+                    label: "Lien version web",
+                    value: "[webversion]",
+                    previewValue: "https://sendy-url/webversion"
+                  },
+                  {
+                    label: "Numéro du Jour",
+                    value: "[currentdaynumber]",
+                    previewValue: "15"
+                  },
+                  {
+                    label: "Numéro du mois",
+                    value: "[currentmonthnumber]",
+                    previewValue: "06"
+                  },
+                  {
+                    label: "Année",
+                    value: "[currentyear]",
+                    previewValue: "2024"
+                  }
+                ]
+              };
+
+              tags = [...tags, systemTags];
+
               setMergeTagsCatalog(tags);
             } catch (e) {
               console.warn("[mergeTags] prefetch failed:", e);
@@ -298,6 +342,17 @@ export default function StripoEditor() {
 
               // ✅ Ajoute tes tags ici pour le bouton natif
               mergeTags: tags,
+
+              specialLinks: [
+                {
+                  category: "Liens spéciaux",
+                  entries: [
+                    { label: "Lien version web", value: "[webversion]" },
+                    { label: "Lien désinscription", value: "[unsubscribe]" }, 
+                  ],
+                },
+              ],
+              customAppearanceMergetagsInLinks: true,
 
               onReady: function () {
                 setIsEditorReady(true);
@@ -450,7 +505,8 @@ export default function StripoEditor() {
 
             try {
               let result;
-              if (mode === "edit" && templateId) {
+              // ⚠️ Toujours update si templateId existe, même en mode "new"
+              if (templateId) {
                 payload.updated_at = now;
                 result = await supabase
                   .from("Templates")
@@ -500,13 +556,8 @@ export default function StripoEditor() {
       setShowBackConfirm(true);
     } else {
       // Juste retour sans confirmation
-      if (type === "fromScratch") {
-        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}&mode=new`);
-      } else if (type === "catalog") {
-        router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}&mode=new`);
-      } else {
-        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}&mode=new`);
-      }
+      // Correction ici : toujours retourner sur /templates/creer
+      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}&mode=new`);
     }
   };
 
@@ -516,17 +567,11 @@ export default function StripoEditor() {
       await supabase.from("Templates").delete().eq("id", templateId);
     }
     setShowBackConfirm(false);
-    // Redirige selon le type et le mode
+    // Correction ici : toujours retourner sur /templates/creer
     if (backConfirmType === "edit") {
       router.push("/templates");
     } else {
-      if (type === "fromScratch") {
-        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
-      } else if (type === "catalog") {
-        router.push(`/templates/catalog-selection?name=${encodeURIComponent(templateName)}`);
-      } else {
-        router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
-      }
+      router.push(`/templates/creer?name=${encodeURIComponent(templateName)}`);
     }
   };
 
@@ -578,7 +623,7 @@ export default function StripoEditor() {
           padding: "0 32px",
           background: "white",
           boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-          zIndex: 1000,
+          zIndex: 10,
         }}
       >
         {/* Bouton Retour */}
@@ -668,7 +713,7 @@ export default function StripoEditor() {
             background: "#ffe0e0",
             color: "#c62828",
             padding: "12px 32px",
-            zIndex: 1001,
+            zIndex: 2001, // <-- Augmente la valeur ici aussi
             fontWeight: 500,
             fontSize: "1rem",
           }}
@@ -677,7 +722,16 @@ export default function StripoEditor() {
         </div>
       )}
 
-      <div ref={containerRef} style={{ width: "100%", height: "100%", background: "#f5f5f7", paddingTop: 56 }} />
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "#f5f5f7",
+          paddingTop: 56,
+          position: "relative",
+        }}
+      />
 
       {/* External Merge Tags Dialog */}
       <Dialog open={isMergeTagsOpen} onOpenChange={setIsMergeTagsOpen}>
@@ -860,6 +914,30 @@ export default function StripoEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Ajoute ce style global pour forcer les popups Stripo à passer au-dessus */}
+      <style jsx global>{`
+        /* Forcer tous les tooltips/popups Stripo à être au-dessus de tout */
+        .es-popup,
+        .es-dropdown,
+        .es-context-menu,
+        .es-modal,
+        .es-plugin-ui-modal,
+        .es-plugin-ui-popover,
+        .es-plugin-ui-dropdown,
+        .es-tooltip,
+        .es-plugin-ui-tooltip,
+        [class*="es-"][class*="popup"],
+        [class*="es-"][class*="popover"],
+        [class*="es-"][class*="dropdown"],
+        [class*="es-"][class*="tooltip"] {
+          z-index: 99999 !important;
+        }
+        /* Pour les tooltips qui sont en fixed */
+        .es-tooltip[style*="z-index"] {
+          z-index: 99999 !important;
+        }
+      `}</style>
     </div>
   );
 }
